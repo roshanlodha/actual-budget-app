@@ -24,6 +24,7 @@ targets:
       - path: Resources
         excludes: [README.md]
       - path: Shared
+      - path: Data
     dependencies:
       - target: SummaryWidgetExtension
     info:
