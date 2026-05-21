@@ -1,3 +1,7 @@
+# local stuff
+.DS_Store
+*/.DS_Store
+
 *.ipa
 *.xcarchive
 *.log
