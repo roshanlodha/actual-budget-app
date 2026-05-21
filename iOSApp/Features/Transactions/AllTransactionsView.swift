@@ -47,19 +47,35 @@ struct AllTransactionsView: View {
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets())
 
-                ForEach(listTransactions, id: \.id) { tx in
-                    TransactionRow(
-                        transaction: tx,
-                        accounts: accounts,
-                        payeesById: payeesById,
-                        categoriesById: categoriesById,
-                        currencyCode: appState.currencyCode,
-                        onEdit: { t in activeSheet = .edit(t) },
-                        onDelete: { t in Task { await delete(t) } }
-                    )
+                if listTransactions.isEmpty && !isLoading {
+                    GlassCard(cornerRadius: 15) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("No transactions yet")
+                                .font(AppTheme.Fonts.headline)
+                                .foregroundColor(.primary)
+                            Text("Add a transaction to start building your history.")
+                                .font(AppTheme.Fonts.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                } else {
+                    ForEach(listTransactions, id: \.id) { tx in
+                        TransactionRow(
+                            transaction: tx,
+                            accounts: accounts,
+                            payeesById: payeesById,
+                            categoriesById: categoriesById,
+                            currencyCode: appState.currencyCode,
+                            onEdit: { t in activeSheet = .edit(t) },
+                            onDelete: { t in Task { await delete(t) } }
+                        )
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -163,8 +179,7 @@ struct AllTransactionsView: View {
             baseURLString: appState.baseURLString,
             apiKey: appState.apiKey,
             syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword,
-            isDemoMode: appState.isDemoMode
+            budgetEncryptionPassword: appState.budgetEncryptionPassword
         )
     }
 

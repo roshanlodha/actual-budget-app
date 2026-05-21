@@ -11,10 +11,6 @@ A modern, native iOS app for managing your personal finances with the Actual Bud
 - **Transaction Tracking**: Comprehensive transaction history with filtering
 - **Budget Planning**: Visual budget management with category breakdowns
 
-### 🧪 **Demo Mode**
-- **Sample Data**: Test the app with realistic demo data
-- **Toggle On/Off**: Switch between demo and real data seamlessly
-
 ## Screenshots
 
 <table>
@@ -69,11 +65,6 @@ A modern, native iOS app for managing your personal finances with the Actual Bud
      - Sync ID
      - Budget Encryption Password (optional)
 
-3. **Alternative - Demo Mode**:
-   - Enable "Demo Mode" in Settings
-   - The app will show sample data for testing
-
-
 ## API Integration
 
 The app integrates with the Actual Budget API to provide real-time financial data:
@@ -123,7 +114,6 @@ For commercial licensing inquiries, please contact the author.
 For support, feature requests, or bug reports:
 - Open an issue on GitHub
 - Check the documentation
-- Review the demo mode for feature examples
 
 ---
 

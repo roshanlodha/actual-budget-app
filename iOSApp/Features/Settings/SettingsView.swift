@@ -55,9 +55,6 @@ struct SettingsView: View {
                                 .tint(AppTheme.accent)
                             }
 
-                            Toggle("Enable Demo Mode", isOn: $appState.isDemoMode)
-                                .tint(AppTheme.accent)
-
                             NavigationLink {
                                 LogsView()
                             } label: {

@@ -200,8 +200,7 @@ struct TransactionEditor: View {
             baseURLString: appState.baseURLString,
             apiKey: appState.apiKey,
             syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword,
-            isDemoMode: appState.isDemoMode
+            budgetEncryptionPassword: appState.budgetEncryptionPassword
         )
     }
 

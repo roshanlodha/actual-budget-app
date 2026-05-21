@@ -82,18 +82,6 @@ struct OnboardingView: View {
                 .disabled(!isValid)
                 .padding(.horizontal)
                 
-                Button(action: useDemo) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "play.circle")
-                        Text("Use Demo Mode")
-                    }
-                    .font(AppTheme.Fonts.subheadline)
-                    .foregroundColor(.white.opacity(0.9))
-                    .padding(.vertical, 4)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 4)
-                
                 Spacer()
             }
             .padding()
@@ -113,9 +101,5 @@ struct OnboardingView: View {
         appState.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         appState.syncId = syncId.trimmingCharacters(in: .whitespacesAndNewlines)
         appState.budgetEncryptionPassword = password
-    }
-
-    private func useDemo() {
-        appState.isDemoMode = true
     }
 }

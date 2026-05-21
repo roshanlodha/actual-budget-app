@@ -18,24 +18,47 @@ struct TransactionsView: View {
     var body: some View {
         ZStack {
             AppBackground()
-            List {
-                ForEach(sortedTransactions, id: \.id) { tx in
-                    TransactionRow(
-                        transaction: tx,
-                        accounts: accounts,
-                        payeesById: payeesById,
-                        categoriesById: categoriesById,
-                        currencyCode: appState.currencyCode,
-                        onEdit: { t in activeSheet = .edit(t) },
-                        onDelete: { t in Task { await delete(t) } }
-                    )
-                    .contextMenu { contextMenuItems(for: tx) }
+            if sortedTransactions.isEmpty && errorMessage == nil {
+                VStack(spacing: 16) {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("No transactions yet")
+                                .font(AppTheme.Fonts.headline)
+                                .foregroundColor(.primary)
+                            Text("Add a transaction to start building this account's history.")
+                                .font(AppTheme.Fonts.body)
+                                .foregroundStyle(.secondary)
+                            Button("Add Transaction") {
+                                activeSheet = .add
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(AppTheme.accent)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Spacer()
                 }
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .padding()
+            } else {
+                List {
+                    ForEach(sortedTransactions, id: \.id) { tx in
+                        TransactionRow(
+                            transaction: tx,
+                            accounts: accounts,
+                            payeesById: payeesById,
+                            categoriesById: categoriesById,
+                            currencyCode: appState.currencyCode,
+                            onEdit: { t in activeSheet = .edit(t) },
+                            onDelete: { t in Task { await delete(t) } }
+                        )
+                        .contextMenu { contextMenuItems(for: tx) }
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
         }
         .navigationTitle(account.name)
         .toolbar {
@@ -162,8 +185,7 @@ struct TransactionsView: View {
             baseURLString: appState.baseURLString,
             apiKey: appState.apiKey,
             syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword,
-            isDemoMode: appState.isDemoMode
+            budgetEncryptionPassword: appState.budgetEncryptionPassword
         )
     }
     

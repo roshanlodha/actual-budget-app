@@ -39,6 +39,9 @@ struct AccountsView: View {
                                 .foregroundColor(.primary)
                         }
                     }
+                    if accounts.isEmpty && !isLoading {
+                        emptyState
+                    }
                     if !onBudget.isEmpty {
                         accountSection(title: "On-Budget", accounts: onBudget)
                     }
@@ -122,8 +125,7 @@ struct AccountsView: View {
             baseURLString: appState.baseURLString,
             apiKey: appState.apiKey,
             syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword,
-            isDemoMode: appState.isDemoMode
+            budgetEncryptionPassword: appState.budgetEncryptionPassword
         )
     }
 
@@ -161,37 +163,23 @@ struct AccountsView: View {
     }
 
     private func fetchBalance(accountId: String) async throws -> Int {
-        if appState.isDemoMode {
-            // Compute a fake balance by summing generated demo transactions
-            let since = demoSinceDateString(daysBack: 120)
-            let txs = DemoDataService.shared.generateTransactions(for: accountId, since: since)
-            return txs.compactMap { $0.amount }.reduce(0, +)
-        } else {
-            let url = APIEndpoints.accountBalance(base: try APIEndpoints.baseURL(from: appState.baseURLString), syncId: appState.syncId, accountId: accountId)
-            var req = URLRequest(url: url)
-            req.httpMethod = "GET"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.setValue(appState.apiKey, forHTTPHeaderField: "x-api-key")
-            if !appState.budgetEncryptionPassword.isEmpty { req.setValue(appState.budgetEncryptionPassword, forHTTPHeaderField: "budget-encryption-password") }
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                NetworkLogger.logHTTPError(method: "GET", url: url, baseURLString: appState.baseURLString, status: http.statusCode, body: data)
-                throw URLError(.badServerResponse)
-            }
-            let decoded = try JSONDecoder().decode(APIResponse<Int>.self, from: data)
-            return decoded.data
+        let url = APIEndpoints.accountBalance(base: try APIEndpoints.baseURL(from: appState.baseURLString), syncId: appState.syncId, accountId: accountId)
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(appState.apiKey, forHTTPHeaderField: "x-api-key")
+        if !appState.budgetEncryptionPassword.isEmpty { req.setValue(appState.budgetEncryptionPassword, forHTTPHeaderField: "budget-encryption-password") }
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            NetworkLogger.logHTTPError(method: "GET", url: url, baseURLString: appState.baseURLString, status: http.statusCode, body: data)
+            throw URLError(.badServerResponse)
         }
+        let decoded = try JSONDecoder().decode(APIResponse<Int>.self, from: data)
+        return decoded.data
     }
 
     private func formattedAmount(_ amount: Int?) -> String {
         return CurrencyFormatter.shared.format(amount ?? 0, currencyCode: appState.currencyCode)
-    }
-
-    private func demoSinceDateString(daysBack: Int) -> String {
-        let date = Calendar.current.date(byAdding: .day, value: -daysBack, to: Date()) ?? Date()
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
     }
 
     private func totalFor(accounts: [Account]) -> Int {
@@ -207,6 +195,25 @@ struct AccountsView: View {
             _ = try await client().createAccount(name: name, offbudget: offbudget)
             await hardReload()
         } catch { await MainActor.run { errorMessage = error.localizedDescription } }
+    }
+
+    private var emptyState: some View {
+        GlassCard(cornerRadius: 15) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("No accounts yet")
+                    .font(AppTheme.Fonts.headline)
+                    .foregroundColor(.primary)
+                Text("Create your first account to start tracking balances and transactions.")
+                    .font(AppTheme.Fonts.body)
+                    .foregroundStyle(.secondary)
+                Button("Create your first account") {
+                    showingCreate = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.accent)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
@@ -245,4 +252,3 @@ private struct CreateAccountSheet: View {
         }
     }
 }
-
