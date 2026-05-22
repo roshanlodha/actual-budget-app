@@ -39,9 +39,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.actual.accounts
-        CODE_SIGN_STYLE: Manual
-        # --- FIXED: Provide a placeholder Team ID ---
-        DEVELOPMENT_TEAM: "A1B2C3D4E5"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
         PROVISIONING_PROFILE_SPECIFIER: ""
         CODE_SIGN_ENTITLEMENTS: Resources/ActualAccounts.entitlements
         INFOPLIST_FILE: Resources/Info.plist
@@ -68,9 +67,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.actual.accounts.SummaryWidget
-        CODE_SIGN_STYLE: Manual
-        # --- FIXED: Provide the same placeholder Team ID ---
-        DEVELOPMENT_TEAM: "A1B2C3D4E5"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
         PROVISIONING_PROFILE_SPECIFIER: ""
         CODE_SIGN_ENTITLEMENTS: SummaryWidget/SummaryWidgetExtension.entitlements
         INFOPLIST_FILE: SummaryWidget/Info.plist
