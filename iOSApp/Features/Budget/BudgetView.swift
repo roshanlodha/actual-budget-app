@@ -7,6 +7,14 @@ struct BudgetView: View {
     @State private var monthGroups: [BudgetMonthCategoryGroup] = []
     @State private var expandedGroups: Set<String> = []
     @State private var errorMessage: String?
+    
+    @State private var editingCategory: BudgetMonthCategory?
+    @State private var editBudgetString: String = ""
+
+    private var repository: BudgetRepository {
+        guard let repo = appState.repository else { fatalError("Repository unavailable") }
+        return repo
+    }
 
     var body: some View {
         ZStack {
@@ -39,6 +47,23 @@ struct BudgetView: View {
             }
         }
         .task { await loadAll() }
+        .alert("Budget Amount", isPresented: Binding(
+            get: { editingCategory != nil },
+            set: { if !$0 { editingCategory = nil } }
+        )) {
+            TextField("Amount", text: $editBudgetString)
+                .keyboardType(.decimalPad)
+            Button("Cancel", role: .cancel) { editingCategory = nil }
+            Button("Save") {
+                if let cat = editingCategory {
+                    saveBudget(for: cat)
+                }
+            }
+        } message: {
+            if let cat = editingCategory {
+                Text("Enter budgeted amount for \(cat.name)")
+            }
+        }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
@@ -101,33 +126,39 @@ struct BudgetView: View {
     }
 
     private func categoryRow(_ category: BudgetMonthCategory) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(category.name)
-                    .font(AppTheme.Fonts.headline)
-                    .foregroundColor(.primary) 
-                Spacer()
-                Text(formatMoney(category.balance ?? 0))
-                    .font(AppTheme.Fonts.subheadline.monospacedDigit())
-                    .foregroundColor( (category.balance ?? 0) < 0 ? AppTheme.destructive : .primary) 
+        Button {
+            editingCategory = category
+            editBudgetString = String(format: "%.2f", Double(category.budgeted ?? 0) / 100.0)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(category.name)
+                        .font(AppTheme.Fonts.headline)
+                        .foregroundColor(.primary) 
+                    Spacer()
+                    Text(formatMoney(category.balance ?? 0))
+                        .font(AppTheme.Fonts.subheadline.monospacedDigit())
+                        .foregroundColor( (category.balance ?? 0) < 0 ? AppTheme.destructive : .primary) 
+                }
+                
+                let spent = abs(category.spent ?? 0)
+                let budgeted = category.budgeted ?? 0
+                let progress = budgeted > 0 ? min(Double(spent) / Double(budgeted), 1.0) : 0.0
+                
+                ProgressView(value: progress)
+                    .tint(progress > 0.85 ? AppTheme.destructive : AppTheme.accent)
+                    .padding(.top, 2)
+                
+                HStack {
+                    Text("Spent: \(formatMoney(spent))")
+                    Spacer()
+                    Text("Budgeted: \(formatMoney(budgeted))")
+                }
+                .font(AppTheme.Fonts.footnote)
+                .foregroundStyle(.secondary) 
             }
-            
-            let spent = abs(category.spent ?? 0)
-            let budgeted = category.budgeted ?? 0
-            let progress = budgeted > 0 ? min(Double(spent) / Double(budgeted), 1.0) : 0.0
-            
-            ProgressView(value: progress)
-                .tint(progress > 0.85 ? AppTheme.destructive : AppTheme.accent)
-                .padding(.top, 2)
-            
-            HStack {
-                Text("Spent: \(formatMoney(spent))")
-                Spacer()
-                Text("Budgeted: \(formatMoney(budgeted))")
-            }
-            .font(AppTheme.Fonts.footnote)
-            .foregroundStyle(.secondary) 
         }
+        .buttonStyle(.plain)
     }
 
     private func metric(label: String, value: Int) -> some View {
@@ -164,27 +195,32 @@ struct BudgetView: View {
         return CurrencyFormatter.shared.format(amount, currencyCode: appState.currencyCode)
     }
 
-    private func client() throws -> ActualAPIClient {
-        try ActualAPIClient(
-            baseURLString: appState.baseURLString,
-            apiKey: appState.apiKey,
-            syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword
-        )
-    }
-
     private func loadAll() async {
         do {
             let monthKey = String(format: "%04d-%02d", Calendar.current.component(.year, from: monthDate), Calendar.current.component(.month, from: monthDate))
-            async let budgetMonth = try client().fetchBudgetMonth(monthKey)
-            async let groups = try client().fetchBudgetMonthCategoryGroups(monthKey)
-            let (bm, g) = try await (budgetMonth, groups)
+            let bm = try await repository.fetchBudgetMonth(monthKey)
+            let g = try await repository.fetchBudgetMonthCategoryGroups(monthKey)
             await MainActor.run {
                 budget = bm
                 monthGroups = g
             }
         } catch {
             await MainActor.run { errorMessage = error.localizedDescription }
+        }
+    }
+
+    private func saveBudget(for category: BudgetMonthCategory) {
+        let amountDouble = Double(editBudgetString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        let budgetedCents = Int(amountDouble * 100)
+        let monthKey = String(format: "%04d-%02d", Calendar.current.component(.year, from: monthDate), Calendar.current.component(.month, from: monthDate))
+        
+        Task {
+            do {
+                try await repository.updateBudgetAmount(month: monthKey, categoryId: category.id, budgeted: budgetedCents)
+                await loadAll()
+            } catch {
+                await MainActor.run { errorMessage = error.localizedDescription }
+            }
         }
     }
 }

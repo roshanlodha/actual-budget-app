@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
@@ -7,11 +8,15 @@ struct DashboardView: View {
     @State private var payeesById: [String: Payee] = [:]
     @State private var transactions: [Transaction] = []
     @State private var errorMessage: String?
-    
     @State private var activeSheet: SheetType?
 
     var onBudgetAccounts: [Account] { accounts.filter { !$0.offbudget } }
     private var recentFive: [Transaction] { recentNonTransferOnBudget().prefix(5).map { $0 } }
+    
+    private var repository: BudgetRepository {
+        guard let repo = appState.repository else { fatalError("Repository unavailable") }
+        return repo
+    }
 
     var body: some View {
         ZStack {
@@ -117,92 +122,9 @@ struct DashboardView: View {
         }
         .alert("Error", isPresented: .constant(errorMessage != nil), actions: {
             Button("OK") { errorMessage = nil }
-            Button("View Logs") {
-                AppLogger.shared.log("User tapped View Logs from Dashboard error", level: .info, context: "DashboardView")
-                errorMessage = nil
-                NotificationCenter.default.post(name: NSNotification.Name("OpenLogsView"), object: nil)
-            }
         }, message: {
             Text(errorMessage ?? "An unknown error occurred.")
         })
-    }
-
-    private var recentTransactionsSection: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("Recent Activity")
-                    .font(AppTheme.Fonts.title)
-                    .foregroundColor(.primary)
-                Spacer()
-                NavigationLink("View All") { AllTransactionsView() }
-                    .foregroundColor(AppTheme.accent)
-            }
-            
-            let recent = recentNonTransferOnBudget().prefix(5)
-            
-            if recent.isEmpty {
-                 GlassCard {
-                     Text("No recent transactions to show.")
-                         .font(AppTheme.Fonts.body)
-                         .foregroundStyle(.secondary)
-                         .frame(maxWidth: .infinity, minHeight: 100)
-                 }
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(recent, id: \.id) { tx in
-                        TransactionRow(
-                            transaction: tx,
-                            accounts: accounts,
-                            payeesById: payeesById,
-                            categoriesById: categoriesById,
-                            currencyCode: appState.currencyCode,
-                            onEdit: { t in activeSheet = .edit(t) },
-                            onDelete: { t in Task { await delete(t) } }
-                        )
-                    }
-                }
-            }
-            
-            Button {
-                activeSheet = .add
-            } label: {
-                HStack {
-                    Image(systemName: "plus")
-                    Text("Add Transaction")
-                }
-                .font(AppTheme.Fonts.headline)
-                .foregroundColor(AppTheme.accent)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-            }
-            .padding(.top)
-        }
-    }
-    
-    private func transactionRow(_ tx: Transaction) -> some View {
-        HStack {
-            Image(systemName: (tx.amount ?? 0) < 0 ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                .font(.title2)
-                .foregroundColor((tx.amount ?? 0) < 0 ? .secondary : AppTheme.positive)
-            
-            VStack(alignment: .leading) {
-                Text(payeeText(tx))
-                    .font(AppTheme.Fonts.headline)
-                    .foregroundColor(.primary)
-                Text(tx.date)
-                    .font(AppTheme.Fonts.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Text(formatMoney(abs(tx.amount ?? 0)))
-                .font(AppTheme.Fonts.body.monospacedDigit())
-                .foregroundColor((tx.amount ?? 0) < 0 ? .primary : AppTheme.positive)
-        }
-        .padding()
-        .background(.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
     }
 
     private func metricCard(title: String, value: Int, isMoney: Bool = true) -> some View {
@@ -219,38 +141,28 @@ struct DashboardView: View {
         }
     }
 
-    private func client() throws -> ActualAPIClient {
-        try ActualAPIClient(
-            baseURLString: appState.baseURLString,
-            apiKey: appState.apiKey,
-            syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword
-        )
-    }
-
     private func load() async {
         do {
-            async let accs = try client().fetchAccounts()
-            async let cats = try client().fetchCategories()
-            async let payees = try client().fetchPayees()
-            let (accList, catList, payeeList) = try await (accs, cats, payees)
+            let accList = try await repository.fetchAccounts()
+            let catList = try await repository.fetchCategories()
+            let payeeList = try await repository.fetchPayees()
+            
             let since = firstOfThisMonthMinus(days: 31)
-            let txs = try await withThrowingTaskGroup(of: [Transaction].self) { group -> [[Transaction]] in
-                for acc in accList { group.addTask { try await client().fetchTransactions(accountId: acc.id, since: since) } }
-                var results: [[Transaction]] = []
-                for try await list in group { results.append(list) }
-                return results
+            var allTxs = [Transaction]()
+            for acc in accList {
+                let list = try await repository.fetchTransactions(accountId: acc.id, since: since)
+                allTxs.append(contentsOf: list)
             }
+            
             await MainActor.run {
-                accounts = accList
-                 self.transactions = txs.flatMap { $0 }
-                categoriesById = Dictionary(uniqueKeysWithValues: catList.map { ($0.id, $0.name) })
-                payeesById = Dictionary(uniqueKeysWithValues: payeeList.map { ($0.id, $0) })
+                self.accounts = accList
+                self.transactions = allTxs
+                self.categoriesById = Dictionary(uniqueKeysWithValues: catList.map { ($0.id, $0.name) })
+                self.payeesById = Dictionary(uniqueKeysWithValues: payeeList.map { ($0.id, $0) })
+                
                 SharedDataManager.shared.save(spentToday: self.spentToday(), currencyCode: self.appState.currencyCode)
-                transactions = txs.flatMap { $0 }
             }
         } catch {
-            AppLogger.shared.log(error: error, context: "DashboardView.load")
             await MainActor.run { errorMessage = error.localizedDescription }
         }
     }
@@ -306,33 +218,19 @@ struct DashboardView: View {
     }
 
     private func format(date: Date) -> String {
-        let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
-        f.timeZone = .current
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
 
     private func formatMoney(_ amount: Int) -> String {
         return CurrencyFormatter.shared.format(amount, currencyCode: appState.currencyCode)
     }
 
-    private func payeeText(_ tx: Transaction) -> String {
-        if let payeeId = tx.payee, let p = payeesById[payeeId] { return p.name }
-        if let n = tx.payee_name, !n.isEmpty { return n }
-        return "(No payee)"
-    }
-
     private func delete(_ tx: Transaction) async {
         guard let txId = tx.id else { return }
-        // Optimistically remove from local list
-        await MainActor.run {
-            transactions.removeAll { $0.id == txId }
-        }
         do {
-            try await client().deleteTransaction(transactionId: txId)
+            try await repository.deleteTransaction(id: txId)
+            await load()
         } catch {
-            AppLogger.shared.log(error: error, context: "DashboardView.delete")
             await MainActor.run { errorMessage = error.localizedDescription }
         }
     }

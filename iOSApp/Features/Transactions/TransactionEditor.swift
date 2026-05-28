@@ -26,13 +26,17 @@ struct TransactionEditor: View {
     @State private var categoryId: String?
     @State private var selectedAccountId: String
 
+    private var repository: BudgetRepository {
+        guard let repo = appState.repository else { fatalError("Repository unavailable") }
+        return repo
+    }
+
     init(transaction: Transaction?, initialAccountId: String?, onSave: @escaping (Transaction) -> Void) {
         self.transaction = transaction
         self.initialAccountId = initialAccountId
         self.onSave = onSave
 
         if let t = transaction {
-            // Editing an existing transaction: Initialize state from the transaction object
             _date = State(initialValue: Self.parseDate(t.date) ?? Date())
             _amountString = State(initialValue: Self.formatAmountForDisplay(abs(t.amount ?? 0)))
             _isNegative = State(initialValue: (t.amount ?? 0) < 0)
@@ -56,7 +60,6 @@ struct TransactionEditor: View {
             _selectedAccountId = State(initialValue: t.account)
             _selectedTransferId = State(initialValue: t.transfer_id)
         } else {
-            // Creating a new transaction: Initialize with default values
             _date = State(initialValue: Date())
             _amountString = State(initialValue: "0.00")
             _isNegative = State(initialValue: true)
@@ -74,7 +77,6 @@ struct TransactionEditor: View {
         NavigationView {
             ZStack {
                 AppBackground()
-                
                 if accounts.isEmpty && errorMessage == nil {
                     ProgressView().tint(AppTheme.accent)
                 } else {
@@ -182,10 +184,10 @@ struct TransactionEditor: View {
         Task {
             do {
                 let built = buildTransaction()
-                if let id = built.id {
-                    try await client().updateTransaction(transactionId: id, transaction: built)
+                if let _ = transaction {
+                    try await repository.updateTransaction(built)
                 } else {
-                    try await client().createTransaction(accountId: built.account, transaction: built, runTransfers: (built.transfer_id != nil))
+                    try await repository.createTransaction(built)
                 }
                 onSave(built)
                 dismiss()
@@ -194,22 +196,12 @@ struct TransactionEditor: View {
             }
         }
     }
-    
-    private func client() throws -> ActualAPIClient {
-        try ActualAPIClient(
-            baseURLString: appState.baseURLString,
-            apiKey: appState.apiKey,
-            syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword
-        )
-    }
 
     private func load() async {
         do {
-            async let accs = try client().fetchAccounts()
-            async let cats = try client().fetchCategories()
-            async let pays = try client().fetchPayees()
-            let (a, c, p) = try await (accs, cats, pays)
+            let a = try await repository.fetchAccounts()
+            let c = try await repository.fetchCategories()
+            let p = try await repository.fetchPayees()
             await MainActor.run {
                 accounts = a.filter { !$0.closed }
                 categoriesById = Dictionary(uniqueKeysWithValues: c.map { ($0.id, $0.name) })

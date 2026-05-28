@@ -9,6 +9,11 @@ struct AccountsView: View {
     @State private var showingCreate = false
     @State private var balancesById: [String: Int] = [:]
 
+    private var repository: BudgetRepository {
+        guard let repo = appState.repository else { fatalError("Repository unavailable") }
+        return repo
+    }
+
     private var onBudget: [Account] {
         let list = accounts.filter { !$0.offbudget }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         guard !search.isEmpty else { return list }
@@ -62,18 +67,11 @@ struct AccountsView: View {
                 }
             }
         }
-        .task { await softReload() }
-        .refreshable { await hardReload() }
+        .task { await reload() }
+        .refreshable { await reload() }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
-            Button("View Logs") {
-                AppLogger.shared.log("User tapped View Logs from Accounts error", level: .info, context: "AccountsView")
-                errorMessage = nil
-                NotificationCenter.default.post(name: NSNotification.Name("OpenLogsView"), object: nil)
-            }
-        } message: {
-            Text(errorMessage ?? "")
-        }
+        } message: { Text(errorMessage ?? "") }
         .sheet(isPresented: $showingCreate) {
             CreateAccountSheet { name, offbudget in
                 Task { await createAccount(name: name, offbudget: offbudget) }
@@ -113,69 +111,28 @@ struct AccountsView: View {
                                 .foregroundColor(.primary)
                         }
                     }
-                    .task { await loadBalanceIfNeeded(account) }
                 }
                 .buttonStyle(.plain)
             }
         }
     }
 
-    private func client() throws -> ActualAPIClient {
-        try ActualAPIClient(
-            baseURLString: appState.baseURLString,
-            apiKey: appState.apiKey,
-            syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword
-        )
-    }
-
-    private func hardReload() async { await load(clearBalances: true) }
-    private func softReload() async { await load(clearBalances: false) }
-
-    private func load(clearBalances: Bool) async {
+    private func reload() async {
         isLoading = true
         defer { isLoading = false }
         do {
-            let list = try await client().fetchAccounts()
+            let list = try await repository.fetchAccounts()
+            var balances = [String: Int]()
+            for acc in list {
+                balances[acc.id] = try await repository.fetchAccountBalance(accountId: acc.id)
+            }
             await MainActor.run {
                 self.accounts = list
-                if clearBalances { self.balancesById.removeAll() }
-            }
-            await withTaskGroup(of: Void.self) { group in
-                for acc in list {
-                    group.addTask { await self.loadBalanceIfNeeded(acc) }
-                }
+                self.balancesById = balances
             }
         } catch {
-            AppLogger.shared.log(error: error, context: "AccountsView.load")
             await MainActor.run { errorMessage = error.localizedDescription }
         }
-    }
-
-    private func loadBalanceIfNeeded(_ account: Account) async {
-        if balancesById[account.id] != nil { return }
-        do {
-            let bal = try await fetchBalance(accountId: account.id)
-            await MainActor.run { balancesById[account.id] = bal }
-        } catch {
-            // ignore per-row errors
-        }
-    }
-
-    private func fetchBalance(accountId: String) async throws -> Int {
-        let url = APIEndpoints.accountBalance(base: try APIEndpoints.baseURL(from: appState.baseURLString), syncId: appState.syncId, accountId: accountId)
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue(appState.apiKey, forHTTPHeaderField: "x-api-key")
-        if !appState.budgetEncryptionPassword.isEmpty { req.setValue(appState.budgetEncryptionPassword, forHTTPHeaderField: "budget-encryption-password") }
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            NetworkLogger.logHTTPError(method: "GET", url: url, baseURLString: appState.baseURLString, status: http.statusCode, body: data)
-            throw URLError(.badServerResponse)
-        }
-        let decoded = try JSONDecoder().decode(APIResponse<Int>.self, from: data)
-        return decoded.data
     }
 
     private func formattedAmount(_ amount: Int?) -> String {
@@ -192,9 +149,11 @@ struct AccountsView: View {
 
     private func createAccount(name: String, offbudget: Bool) async {
         do {
-            _ = try await client().createAccount(name: name, offbudget: offbudget)
-            await hardReload()
-        } catch { await MainActor.run { errorMessage = error.localizedDescription } }
+            _ = try await repository.createAccount(name: name, offbudget: offbudget)
+            await reload()
+        } catch {
+            await MainActor.run { errorMessage = error.localizedDescription }
+        }
     }
 
     private var emptyState: some View {

@@ -53,17 +53,7 @@ public final class AppState: ObservableObject {
         public var id: String { self.rawValue }
     }
     
-    // --- SHIMS FOR COMPILABILITY WITH LEGACY NETWORKING CODE ---
-    // (To be deleted in Phase 4 once Views are updated and Networking is removed)
-    @Published public var baseURLString: String = "local://database"
-    @Published public var apiKey: String = "local_key"
-    @Published public var syncId: String = "local_sync"
-    @Published public var budgetEncryptionPassword: String = ""
-    public var isConfigured: Bool { onboardingState == .ready }
-    public func resetConfiguration() {
-        selectedBudgetID = nil
-    }
-    // -----------------------------------------------------------
+
     
     public init() {
         self.currencyCode = UserDefaults.standard.string(forKey: Keys.currencyCode) ?? Locale.current.currency?.identifier ?? "USD"

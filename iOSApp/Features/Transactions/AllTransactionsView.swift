@@ -1,5 +1,4 @@
 import SwiftUI
-import Charts
 
 struct AllTransactionsView: View {
     @EnvironmentObject private var appState: AppState
@@ -7,14 +6,17 @@ struct AllTransactionsView: View {
     @State private var accounts: [Account] = []
     @State private var payeesById: [String: Payee] = [:]
     @State private var categoriesById: [String: String] = [:]
-    @State private var balancesById: [String: Int] = [:]
     @State private var errorMessage: String?
     @State private var isLoading = false
     @State private var onBudgetOnly: Bool = true
     @State private var filterGranularity: Granularity = .day
     @State private var filterValue: Int = 30
-    
     @State private var activeSheet: SheetType?
+
+    private var repository: BudgetRepository {
+        guard let repo = appState.repository else { fatalError("Repository unavailable") }
+        return repo
+    }
 
     enum Granularity: String, CaseIterable, Identifiable {
         case day = "Days", week = "Weeks", month = "Months", year = "Years"
@@ -105,44 +107,12 @@ struct AllTransactionsView: View {
 
     private func delete(_ tx: Transaction) async {
         guard let id = tx.id else { return }
-        await MainActor.run {
-            transactions.removeAll { $0.id == id }
-        }
         do {
-            try await client().deleteTransaction(transactionId: id)
+            try await repository.deleteTransaction(id: id)
+            await load()
         } catch {
-            AppLogger.shared.log(error: error, context: "AllTransactionsView.delete")
             await MainActor.run { errorMessage = error.localizedDescription }
         }
-    }
-    
-    private func transactionRow(_ tx: Transaction) -> some View {
-        HStack(spacing: 16) {
-             Image(systemName: (tx.amount ?? 0) < 0 ? "arrow.down.left.circle.fill" : "arrow.up.right.circle.fill")
-                .font(.title2)
-                .foregroundColor((tx.amount ?? 0) < 0 ? .secondary : AppTheme.positive)
-
-            VStack(alignment: .leading) {
-                Text(payeeText(tx))
-                    .font(AppTheme.Fonts.headline)
-                    .foregroundColor(.primary)
-                Text(accounts.first { $0.id == tx.account }?.name ?? "Unknown Account")
-                    .font(AppTheme.Fonts.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing) {
-                Text(formattedSignedAmount(tx.amount))
-                    .font(AppTheme.Fonts.body.monospacedDigit())
-                    .foregroundStyle((tx.amount ?? 0) < 0 ? .primary : AppTheme.positive)
-                Text(tx.date)
-                    .font(AppTheme.Fonts.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .background(Color.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
     }
 
     private var filtersBar: some View {
@@ -174,40 +144,29 @@ struct AllTransactionsView: View {
         return false
     }
 
-    private func client() throws -> ActualAPIClient {
-        try ActualAPIClient(
-            baseURLString: appState.baseURLString,
-            apiKey: appState.apiKey,
-            syncId: appState.syncId,
-            budgetEncryptionPassword: appState.budgetEncryptionPassword
-        )
-    }
-
     private func load() async {
         isLoading = true
         defer { isLoading = false }
         do {
             let since = sinceDateString()
-            async let accs = try client().fetchAccounts()
-            async let payees = try client().fetchPayees()
-            async let cats = try client().fetchCategories()
-            let (accountsList, payeesList, categories) = try await (accs, payees, cats)
+            let accountsList = try await repository.fetchAccounts()
+            let payeesList = try await repository.fetchPayees()
+            let categories = try await repository.fetchCategories()
+            
             let mappingCats = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.name) })
             let mappingPayees = Dictionary(uniqueKeysWithValues: payeesList.map { ($0.id, $0) })
-            let perAccountTxs = try await withThrowingTaskGroup(of: [Transaction].self) { group -> [[Transaction]] in
-                for acc in accountsList {
-                    group.addTask { try await client().fetchTransactions(accountId: acc.id, since: since) }
-                }
-                var results: [[Transaction]] = []
-                for try await list in group { results.append(list) }
-                return results
+            
+            var allTxs = [Transaction]()
+            for acc in accountsList {
+                let list = try await repository.fetchTransactions(accountId: acc.id, since: since)
+                allTxs.append(contentsOf: list)
             }
             
             await MainActor.run {
                 self.accounts = accountsList
                 self.categoriesById = mappingCats
                 self.payeesById = mappingPayees
-                self.transactions = perAccountTxs.flatMap { $0 }
+                self.transactions = allTxs
             }
         } catch {
             await MainActor.run { errorMessage = error.localizedDescription }

@@ -19,7 +19,6 @@ targets:
     sources:
       - path: App
       - path: Features
-      - path: Networking
       - path: UI
       - path: Resources
         excludes: [README.md]
