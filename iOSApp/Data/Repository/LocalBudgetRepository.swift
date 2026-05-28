@@ -92,6 +92,17 @@ public final class LocalBudgetRepository: BudgetRepository {
         let count = rowCount.first?["count"] as? Int ?? 0
         if count == 0 {
             try BudgetSeeder.seedStarterData(db: db)
+        } else {
+            // Lightweight migration: add Shopping category if missing
+            let shoppingRows = try db.query("SELECT id FROM categories WHERE name = 'Shopping';")
+            if shoppingRows.isEmpty {
+                // Find the "Flexible Spending" group to insert into
+                let flexGroupRows = try db.query("SELECT id FROM budget_category_groups WHERE name = 'Flexible Spending';")
+                let groupId = flexGroupRows.first?["id"] as? String
+                let catId = UUID().uuidString
+                try db.execute("INSERT INTO categories (id, name, is_income, hidden, group_id, color, icon) VALUES (?, 'Shopping', 0, 0, ?, '#E056A0', 'bag.fill');",
+                               arguments: [catId, groupId ?? NSNull()])
+            }
         }
     }
     

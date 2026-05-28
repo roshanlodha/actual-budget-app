@@ -36,7 +36,7 @@ struct CSVImportView: View {
     @State private var dateColumn = ""
     @State private var payeeColumn = ""
     @State private var notesColumn = ""
-    @State private var categoryColumn = ""
+    @State private var categoryColumn = "__auto__"
     @State private var amountColumn = ""
     
     // Split amount options
@@ -63,6 +63,9 @@ struct CSVImportView: View {
     // UI states
     @State private var errorMessage: String?
     @State private var showingFileImporter = false
+    @State private var isImporting = false
+    @State private var importProgress: Double = 0.0
+    @State private var importStatusText = ""
     
     private var repository: BudgetRepository {
         guard let repo = appState.repository else { fatalError("Repository unavailable") }
@@ -133,6 +136,26 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     
                     navigationBarBottom
                         .padding()
+                }
+                
+                if isImporting {
+                    Color.black.opacity(0.6).ignoresSafeArea()
+                    VStack(spacing: 20) {
+                        ProgressView(value: importProgress, total: 1.0)
+                            .progressViewStyle(.linear)
+                            .tint(AppTheme.accent)
+                        Text(importStatusText)
+                            .font(AppTheme.Fonts.headline)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(UIColor.systemBackground).opacity(0.95))
+                            .shadow(radius: 20)
+                    )
+                    .padding(40)
                 }
             }
             .navigationTitle("Import CSV")
@@ -438,7 +461,7 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                         columnPicker(label: "Date Column *", selection: $dateColumn)
                         columnPicker(label: "Payee Column *", selection: $payeeColumn)
                         columnPicker(label: "Notes Column", selection: $notesColumn, isOptional: true)
-                        columnPicker(label: "Category Column", selection: $categoryColumn, isOptional: true)
+                        categoryColumnPicker
                         
                         Toggle("Split Inflow/Outflow Columns", isOn: $splitInflowOutflow)
                             .toggleStyle(SwitchToggleStyle(tint: AppTheme.accent))
@@ -494,6 +517,21 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     }
                 }
             }
+        }
+    }
+    
+    /// Special picker for the Category field with Auto as the default option.
+    private var categoryColumnPicker: some View {
+        HStack {
+            Text("Category Column")
+            Spacer()
+            Picker("Category Column", selection: $categoryColumn) {
+                Text("Auto").tag("__auto__")
+                ForEach(parsedHeaders, id: \.self) { header in
+                    Text(header).tag(header)
+                }
+            }
+            .pickerStyle(.menu)
         }
     }
     
@@ -655,7 +693,7 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
         dateColumn = ""
         payeeColumn = ""
         notesColumn = ""
-        categoryColumn = ""
+        categoryColumn = "__auto__"  // Always default to Auto
         amountColumn = ""
         inflowColumn = ""
         outflowColumn = ""
@@ -671,9 +709,7 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                 payeeColumn = h
             } else if clean.contains("memo") || clean.contains("note") || clean.contains("details") {
                 notesColumn = h
-            } else if clean.contains("category") {
-                categoryColumn = h
-            } else if clean.contains("amount") {
+            } else if clean.contains("amount") {  // category column intentionally NOT auto-mapped
                 amountColumn = h
             } else if clean.contains("inflow") {
                 inflowColumn = h
@@ -720,7 +756,8 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
         let dateIdx = headers.firstIndex(of: dateColumn) ?? -1
         let payeeIdx = headers.firstIndex(of: payeeColumn) ?? -1
         let notesIdx = notesColumn.isEmpty ? -1 : (headers.firstIndex(of: notesColumn) ?? -1)
-        let categoryIdx = categoryColumn.isEmpty ? -1 : (headers.firstIndex(of: categoryColumn) ?? -1)
+        // "__auto__" means LLM at import time — no column index needed
+        let categoryIdx = (categoryColumn.isEmpty || categoryColumn == "__auto__") ? -1 : (headers.firstIndex(of: categoryColumn) ?? -1)
         
         let amtIdx = amountColumn.isEmpty ? -1 : (headers.firstIndex(of: amountColumn) ?? -1)
         let inflowIdx = inflowColumn.isEmpty ? -1 : (headers.firstIndex(of: inflowColumn) ?? -1)
@@ -830,11 +867,18 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
     }
     
     private func performImport() async {
+        await MainActor.run {
+            isImporting = true
+            importProgress = 0.0
+            importStatusText = "Preparing import..."
+        }
+        
         do {
             if categories.isEmpty {
                 await loadMetaData()
             }
             let toImport = previewTransactions.filter { $0.isSelected }
+            let total = Double(toImport.count)
             
             if clearTransactions {
                 // Delete all transactions from the current account
@@ -846,7 +890,11 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                 }
             }
             
-            for pTx in toImport {
+            for (index, pTx) in toImport.enumerated() {
+                await MainActor.run {
+                    importStatusText = "Processing \(pTx.payeeName)..."
+                }
+                
                 var finalPayeeId = pTx.payeeId
                 var finalPayeeName: String? = pTx.payeeName
                 
@@ -866,10 +914,21 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     let noteText = pTx.notes ?? ""
                     if let detectedId = await AutoClassifier.shared.autoCategorize(payeeName: pTx.payeeName, notes: noteText, categories: categories) {
                         finalCategoryId = detectedId
+                        let catName = categories.first(where: { $0.id == detectedId })?.name ?? "Unknown"
+                        await MainActor.run {
+                            importStatusText = "Categorized '\(pTx.payeeName)' as '\(catName)'"
+                        }
                     } else {
                         if let otherCat = categories.first(where: { $0.name.localizedCaseInsensitiveCompare("Other") == .orderedSame }) {
                             finalCategoryId = otherCat.id
                         }
+                        await MainActor.run {
+                            importStatusText = "Categorized '\(pTx.payeeName)' as 'Other'"
+                        }
+                    }
+                } else {
+                    await MainActor.run {
+                        importStatusText = "Importing \(pTx.payeeName)..."
                     }
                 }
                 
@@ -888,12 +947,22 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     cleared: true
                 )
                 try await repository.createTransaction(tx)
+                
+                await MainActor.run {
+                    importProgress = Double(index + 1) / total
+                }
             }
             
-            onImport()
-            dismiss()
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await MainActor.run {
+                onImport()
+                dismiss()
+            }
         } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
+            await MainActor.run { 
+                isImporting = false
+                errorMessage = error.localizedDescription 
+            }
         }
     }
     

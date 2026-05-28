@@ -32,11 +32,11 @@ struct TransactionsView: View {
                             Text("Add a transaction to start building this account's history.")
                                 .font(AppTheme.Fonts.body)
                                 .foregroundStyle(.secondary)
-                            Button("Add Transaction") {
-                                activeSheet = .add
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AppTheme.accent)
+                             Button("Import Transactions") {
+                                 activeSheet = .importCSV
+                             }
+                             .buttonStyle(.borderedProminent)
+                             .tint(AppTheme.accent)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -67,14 +67,9 @@ struct TransactionsView: View {
         .navigationTitle(account.name)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 12) {
-                    Button {
-                        activeSheet = .importCSV
-                    } label: { Image(systemName: "square.and.arrow.down") }
-                    Button {
-                        activeSheet = .add
-                    } label: { Image(systemName: "plus") }
-                }
+                Button {
+                    activeSheet = .add
+                } label: { Image(systemName: "plus") }
             }
         }
         .task { await loadAll() }

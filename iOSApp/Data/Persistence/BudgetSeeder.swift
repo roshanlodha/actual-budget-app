@@ -14,6 +14,7 @@ public struct BudgetSeeder {
             ("Flexible Spending", false, [
                 ("Groceries", "#FF8AAE", "cart.fill"),
                 ("Eating Out", "#FF9233", "fork.knife"),
+                ("Shopping", "#E056A0", "bag.fill"),
                 ("Travel", "#39A2DB", "airplane"),
                 ("Clothes & Hair", "#A66CFF", "tshirt.fill"),
                 ("Transportation and Gas", "#39A2DB", "car.fill"),
