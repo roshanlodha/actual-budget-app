@@ -67,9 +67,14 @@ struct TransactionsView: View {
         .navigationTitle(account.name)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    activeSheet = .add
-                } label: { Image(systemName: "plus") }
+                HStack(spacing: 12) {
+                    Button {
+                        activeSheet = .importCSV
+                    } label: { Image(systemName: "square.and.arrow.down") }
+                    Button {
+                        activeSheet = .add
+                    } label: { Image(systemName: "plus") }
+                }
             }
         }
         .task { await loadAll() }
@@ -80,6 +85,8 @@ struct TransactionsView: View {
                 TransactionEditor(transaction: nil, initialAccountId: account.id, onSave: { _ in Task { await loadAll() } })
             case .edit(let transaction):
                 TransactionEditor(transaction: transaction, initialAccountId: account.id, onSave: { _ in Task { await loadAll() } })
+            case .importCSV:
+                CSVImportView(account: account, onImport: { Task { await loadAll() } })
             }
         }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {

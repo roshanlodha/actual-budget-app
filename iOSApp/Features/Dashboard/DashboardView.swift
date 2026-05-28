@@ -118,6 +118,8 @@ struct DashboardView: View {
                 TransactionEditor(transaction: nil, initialAccountId: nil, onSave: { _ in Task { await load() } })
             case .edit(let transaction):
                 TransactionEditor(transaction: transaction, initialAccountId: nil, onSave: { _ in Task { await load() } })
+            case .importCSV:
+                EmptyView()
             }
         }
         .alert("Error", isPresented: .constant(errorMessage != nil), actions: {

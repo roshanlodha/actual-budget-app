@@ -5,6 +5,7 @@ import Foundation
 enum SheetType: Identifiable {
     case add
     case edit(Transaction)
+    case importCSV
 
     var id: String {
         switch self {
@@ -13,6 +14,8 @@ enum SheetType: Identifiable {
         case .edit(let transaction):
             // Use the transaction's ID to uniquely identify the edit sheet
             return transaction.id ?? UUID().uuidString
+        case .importCSV:
+            return "importCSV"
         }
     }
 }
