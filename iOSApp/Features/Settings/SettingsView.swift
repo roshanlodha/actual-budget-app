@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     
+    @State private var showingResetAlert = false
+    
     var body: some View {
         ZStack {
             AppBackground()
@@ -23,9 +25,18 @@ struct SettingsView: View {
                             .lineLimit(1)
                     }
                     Button(role: .destructive) {
-                        appState.selectedBudgetID = nil
+                        showingResetAlert = true
                     } label: {
-                        Label("Switch Budget / Disconnect", systemImage: "arrow.left.arrow.right")
+                        Label("Reset App & Delete Data", systemImage: "trash.fill")
+                    }
+                }
+                .listRowBackground(Color.primary.opacity(0.05))
+                
+                Section("Budget Structure") {
+                    NavigationLink {
+                        CategoryManagerView()
+                    } label: {
+                        Label("Manage Categories", systemImage: "tag.fill")
                     }
                 }
                 .listRowBackground(Color.primary.opacity(0.05))
@@ -56,5 +67,13 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Settings")
+        .alert("Reset App", isPresented: $showingResetAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Everything", role: .destructive) {
+                appState.resetBudget()
+            }
+        } message: {
+            Text("This will permanently delete your budget, transactions, and categories. This action cannot be undone.")
+        }
     }
 }

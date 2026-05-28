@@ -24,9 +24,14 @@ public final class LocalBudgetRepository: BudgetRepository {
             name TEXT NOT NULL,
             is_income INTEGER NOT NULL DEFAULT 0,
             hidden INTEGER NOT NULL DEFAULT 0,
-            group_id TEXT
+            group_id TEXT,
+            color TEXT,
+            icon TEXT
         );
         """)
+        
+        try? db.execute("ALTER TABLE categories ADD COLUMN color TEXT;")
+        try? db.execute("ALTER TABLE categories ADD COLUMN icon TEXT;")
         
         try db.execute("""
         CREATE TABLE IF NOT EXISTS payees (
@@ -126,38 +131,78 @@ public final class LocalBudgetRepository: BudgetRepository {
         }
     }
     
+    public func fetchCategoryGroups() async throws -> [CategoryGroup] {
+        let rows = try db.query("SELECT id, name, is_income, hidden FROM budget_category_groups WHERE hidden = 0;")
+        return rows.map { row in
+            CategoryGroup(
+                id: row["id"] as? String ?? "",
+                name: row["name"] as? String ?? "",
+                is_income: (row["is_income"] as? Int ?? 0) != 0,
+                hidden: (row["hidden"] as? Int ?? 0) != 0
+            )
+        }
+    }
+    
     // MARK: - Categories
     public func fetchCategories() async throws -> [Category] {
-        let rows = try db.query("SELECT id, name, is_income, hidden, group_id FROM categories;")
+        let rows = try db.query("SELECT id, name, is_income, hidden, group_id, color, icon FROM categories;")
         return rows.map { row in
             Category(
                 id: row["id"] as? String ?? "",
                 name: row["name"] as? String ?? "",
                 is_income: (row["is_income"] as? Int ?? 0) != 0,
                 hidden: (row["hidden"] as? Int ?? 0) != 0,
-                group_id: row["group_id"] as? String
+                group_id: row["group_id"] as? String,
+                color: row["color"] as? String,
+                icon: row["icon"] as? String
             )
         }
     }
     
     public func fetchCategoriesByGroupId(_ groupId: String) async throws -> [Category] {
-        let rows = try db.query("SELECT id, name, is_income, hidden, group_id FROM categories WHERE group_id = ?;", arguments: [groupId])
+        let rows = try db.query("SELECT id, name, is_income, hidden, group_id, color, icon FROM categories WHERE group_id = ?;", arguments: [groupId])
         return rows.map { row in
             Category(
                 id: row["id"] as? String ?? "",
                 name: row["name"] as? String ?? "",
                 is_income: (row["is_income"] as? Int ?? 0) != 0,
                 hidden: (row["hidden"] as? Int ?? 0) != 0,
-                group_id: row["group_id"] as? String
+                group_id: row["group_id"] as? String,
+                color: row["color"] as? String,
+                icon: row["icon"] as? String
             )
         }
     }
     
-    public func createCategory(name: String, isIncome: Bool, groupId: String) async throws -> String {
+    public func createCategory(name: String, isIncome: Bool, groupId: String, color: String?, icon: String?) async throws -> String {
         let id = UUID().uuidString
-        try db.execute("INSERT INTO categories (id, name, is_income, hidden, group_id) VALUES (?, ?, ?, 0, ?);",
-                       arguments: [id, name, isIncome, groupId])
+        try db.execute("INSERT INTO categories (id, name, is_income, hidden, group_id, color, icon) VALUES (?, ?, ?, 0, ?, ?, ?);",
+                       arguments: [id, name, isIncome ? 1 : 0, groupId, color ?? NSNull(), icon ?? NSNull()])
         return id
+    }
+    
+    public func updateCategory(_ category: Category) async throws {
+        try db.execute("""
+            UPDATE categories 
+            SET name = ?, is_income = ?, hidden = ?, group_id = ?, color = ?, icon = ?
+            WHERE id = ?;
+        """, arguments: [
+            category.name,
+            (category.is_income ?? false) ? 1 : 0,
+            (category.hidden ?? false) ? 1 : 0,
+            category.group_id ?? NSNull(),
+            category.color ?? NSNull(),
+            category.icon ?? NSNull(),
+            category.id
+        ])
+    }
+    
+    public func deleteCategory(id: String) async throws {
+        try db.transaction {
+            try db.execute("DELETE FROM budget_category_values WHERE category_id = ?;", arguments: [id])
+            try db.execute("UPDATE transactions SET category_id = NULL WHERE category_id = ?;", arguments: [id])
+            try db.execute("DELETE FROM categories WHERE id = ?;", arguments: [id])
+        }
     }
     
     // MARK: - Payees
@@ -338,7 +383,7 @@ public final class LocalBudgetRepository: BudgetRepository {
     // MARK: - Calculations Engine
     public func fetchBudgetMonthCategoryGroups(_ month: String) async throws -> [BudgetMonthCategoryGroup] {
         let groupRows = try db.query("SELECT id, name, is_income, hidden FROM budget_category_groups WHERE hidden = 0;")
-        let catRows = try db.query("SELECT id, name, is_income, hidden, group_id FROM categories WHERE hidden = 0;")
+        let catRows = try db.query("SELECT id, name, is_income, hidden, group_id, color, icon FROM categories WHERE hidden = 0;")
         
         let budgetRows = try db.query("SELECT category_id, budgeted, carryover FROM budget_category_values WHERE month = ?;", arguments: [month])
         let budgetsByCat = Dictionary(uniqueKeysWithValues: budgetRows.map { 
@@ -384,6 +429,8 @@ public final class LocalBudgetRepository: BudgetRepository {
                 let cName = cRow["name"] as? String ?? ""
                 let cIsIncome = (cRow["is_income"] as? Int ?? 0) != 0
                 let cHidden = (cRow["hidden"] as? Int ?? 0) != 0
+                let cColor = cRow["color"] as? String
+                let cIcon = cRow["icon"] as? String
                 
                 let budgeted = budgetsByCat[cId]?.0 ?? 0
                 let spent = spentByCat[cId] ?? 0
@@ -401,7 +448,9 @@ public final class LocalBudgetRepository: BudgetRepository {
                     budgeted: budgeted,
                     spent: spent,
                     balance: balance,
-                    carryover: (budgetsByCat[cId]?.1 ?? 1) != 0
+                    carryover: (budgetsByCat[cId]?.1 ?? 1) != 0,
+                    color: cColor,
+                    icon: cIcon
                 )
             }
             

@@ -5,7 +5,7 @@ struct TransactionsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var transactions: [Transaction] = []
     @State private var accounts: [Account] = []
-    @State private var categoriesById: [String: String] = [:]
+    @State private var categoriesById: [String: Category] = [:]
     @State private var payeesById: [String: Payee] = [:]
     @State private var errorMessage: String?
     @State private var activeSheet: SheetType?
@@ -137,7 +137,7 @@ struct TransactionsView: View {
             let payeesList = try await repository.fetchPayees()
             let list = try await repository.fetchTransactions(accountId: account.id, since: defaultSinceDate())
             
-            let catMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.name) })
+            let catMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
             let payeeMap = Dictionary(uniqueKeysWithValues: payeesList.map { ($0.id, $0) })
             
             await MainActor.run {
@@ -157,7 +157,7 @@ struct TransactionsView: View {
 
     private func categoryName(_ id: String?) -> String? {
         guard let id else { return nil }
-        return categoriesById[id]
+        return categoriesById[id]?.name
     }
 
     private func payeeText(_ tx: Transaction) -> String {

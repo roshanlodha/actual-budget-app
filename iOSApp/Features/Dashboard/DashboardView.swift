@@ -3,7 +3,7 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
     @State private var accounts: [Account] = []
-    @State private var categoriesById: [String: String] = [:]
+    @State private var categoriesById: [String: Category] = [:]
     @State private var payeesById: [String: Payee] = [:]
     @State private var transactions: [Transaction] = []
     @State private var errorMessage: String?
@@ -158,7 +158,7 @@ struct DashboardView: View {
             await MainActor.run {
                 self.accounts = accList
                 self.transactions = allTxs
-                self.categoriesById = Dictionary(uniqueKeysWithValues: catList.map { ($0.id, $0.name) })
+                self.categoriesById = Dictionary(uniqueKeysWithValues: catList.map { ($0.id, $0) })
                 self.payeesById = Dictionary(uniqueKeysWithValues: payeeList.map { ($0.id, $0) })
             }
         } catch {

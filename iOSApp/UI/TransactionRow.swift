@@ -4,16 +4,23 @@ struct TransactionRow: View {
     let transaction: Transaction
     let accounts: [Account]
     let payeesById: [String: Payee]
-    let categoriesById: [String: String]
+    let categoriesById: [String: Category]
     let currencyCode: String
     var onEdit: ((Transaction) -> Void)?
     var onDelete: ((Transaction) -> Void)?
 
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: (transaction.amount ?? 0) < 0 ? "arrow.down.left.circle.fill" : "arrow.up.right.circle.fill")
-                .font(.title2)
-                .foregroundColor((transaction.amount ?? 0) < 0 ? .secondary : AppTheme.positive)
+            let category = categoriesById[transaction.category ?? ""]
+            let iconName = category?.icon ?? ((transaction.amount ?? 0) < 0 ? "arrow.down.left" : "arrow.up.right")
+            let iconColor = Color(hex: category?.color ?? "#8D93AB")
+            
+            Image(systemName: iconName)
+                .font(.footnote.bold())
+                .foregroundColor(.white)
+                .frame(width: 36, height: 36)
+                .background(iconColor)
+                .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(primaryText())
@@ -60,8 +67,8 @@ struct TransactionRow: View {
     }
 
     private func secondaryText() -> String {
-        if let name = categoriesById[transaction.category ?? ""], !name.isEmpty {
-            return name
+        if let category = categoriesById[transaction.category ?? ""], !category.name.isEmpty {
+            return category.name
         }
         if let accountName = accounts.first(where: { $0.id == transaction.account })?.name {
             return accountName

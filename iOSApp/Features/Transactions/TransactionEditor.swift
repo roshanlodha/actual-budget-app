@@ -67,7 +67,7 @@ struct TransactionEditor: View {
             _customPayee = State(initialValue: "")
             _payeeMode = State(initialValue: .picker)
             _notes = State(initialValue: "")
-            _categoryId = State(initialValue: nil)
+            _categoryId = State(initialValue: "auto_detect")
             _selectedAccountId = State(initialValue: initialAccountId ?? "")
             _selectedTransferId = State(initialValue: nil)
         }
@@ -144,6 +144,7 @@ struct TransactionEditor: View {
                 }
                 
                 Picker("Category", selection: $categoryId) {
+                    Text("Auto-Detect").tag(String?.some("auto_detect"))
                     Text("None").tag(String?.none)
                     ForEach(categoriesById.sorted { $0.value < $1.value }, id: \.key) { key, value in
                         Text(value).tag(String?.some(key))
@@ -183,7 +184,48 @@ struct TransactionEditor: View {
     private func save() {
         Task {
             do {
-                let built = buildTransaction()
+                var built = buildTransaction()
+                
+                if built.category == "auto_detect" {
+                    let cats = try await repository.fetchCategories()
+                    let payeeName = payeeMode == .picker ? (payees.first(where: { $0.id == selectedPayeeId })?.name ?? "") : customPayee
+                    
+                    if let detectedId = await AutoClassifier.shared.autoCategorize(payeeName: payeeName, notes: notes, categories: cats) {
+                        built = Transaction(
+                            id: built.id,
+                            account: built.account,
+                            date: built.date,
+                            amount: built.amount,
+                            payee: built.payee,
+                            payee_name: built.payee_name,
+                            imported_payee: built.imported_payee,
+                            category: detectedId,
+                            notes: built.notes,
+                            imported_id: built.imported_id,
+                            transfer_id: built.transfer_id,
+                            cleared: built.cleared,
+                            subtransactions: built.subtransactions
+                        )
+                    } else {
+                        let otherCat = cats.first(where: { $0.name.localizedCaseInsensitiveCompare("Other") == .orderedSame })
+                        built = Transaction(
+                            id: built.id,
+                            account: built.account,
+                            date: built.date,
+                            amount: built.amount,
+                            payee: built.payee,
+                            payee_name: built.payee_name,
+                            imported_payee: built.imported_payee,
+                            category: otherCat?.id,
+                            notes: built.notes,
+                            imported_id: built.imported_id,
+                            transfer_id: built.transfer_id,
+                            cleared: built.cleared,
+                            subtransactions: built.subtransactions
+                        )
+                    }
+                }
+                
                 if let _ = transaction {
                     try await repository.updateTransaction(built)
                 } else {

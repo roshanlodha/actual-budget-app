@@ -32,13 +32,31 @@ public struct Category: Identifiable, Codable, Equatable {
     public let is_income: Bool?
     public let hidden: Bool?
     public let group_id: String?
+    public var color: String?
+    public var icon: String?
 
-    public init(id: String, name: String, is_income: Bool?, hidden: Bool?, group_id: String?) {
+    public init(id: String, name: String, is_income: Bool?, hidden: Bool?, group_id: String?, color: String? = nil, icon: String? = nil) {
         self.id = id
         self.name = name
         self.is_income = is_income
         self.hidden = hidden
         self.group_id = group_id
+        self.color = color
+        self.icon = icon
+    }
+}
+
+public struct CategoryGroup: Identifiable, Codable, Equatable {
+    public let id: String
+    public let name: String
+    public let is_income: Bool?
+    public let hidden: Bool?
+
+    public init(id: String, name: String, is_income: Bool?, hidden: Bool?) {
+        self.id = id
+        self.name = name
+        self.is_income = is_income
+        self.hidden = hidden
     }
 }
 
@@ -161,6 +179,8 @@ public struct BudgetMonthCategory: Identifiable, Decodable, Equatable {
     public let spent: Int?
     public let balance: Int?
     public let carryover: Bool?
+    public var color: String?
+    public var icon: String?
 
     public init(
         id: String,
@@ -171,7 +191,9 @@ public struct BudgetMonthCategory: Identifiable, Decodable, Equatable {
         budgeted: Int?,
         spent: Int?,
         balance: Int?,
-        carryover: Bool?
+        carryover: Bool?,
+        color: String? = nil,
+        icon: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -182,6 +204,8 @@ public struct BudgetMonthCategory: Identifiable, Decodable, Equatable {
         self.spent = spent
         self.balance = balance
         self.carryover = carryover
+        self.color = color
+        self.icon = icon
     }
 }
 

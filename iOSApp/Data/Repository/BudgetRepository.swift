@@ -6,9 +6,12 @@ public protocol BudgetRepository {
     func updateAccount(_ account: Account) async throws
     func deleteAccount(id: String) async throws
     
+    func fetchCategoryGroups() async throws -> [CategoryGroup]
     func fetchCategories() async throws -> [Category]
     func fetchCategoriesByGroupId(_ groupId: String) async throws -> [Category]
-    func createCategory(name: String, isIncome: Bool, groupId: String) async throws -> String
+    func createCategory(name: String, isIncome: Bool, groupId: String, color: String?, icon: String?) async throws -> String
+    func updateCategory(_ category: Category) async throws
+    func deleteCategory(id: String) async throws
     
     func fetchPayees() async throws -> [Payee]
     func createPayee(name: String, categoryId: String?, transferAccountId: String?) async throws -> String

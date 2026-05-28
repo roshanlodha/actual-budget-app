@@ -131,7 +131,17 @@ struct BudgetView: View {
             editBudgetString = String(format: "%.2f", Double(category.budgeted ?? 0) / 100.0)
         } label: {
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
+                HStack(spacing: 12) {
+                    let color = Color(hex: category.color ?? "#8D93AB")
+                    let iconName = category.icon ?? "tag.fill"
+                    
+                    Image(systemName: iconName)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .frame(width: 24, height: 24)
+                        .background(color)
+                        .clipShape(Circle())
+                    
                     Text(category.name)
                         .font(AppTheme.Fonts.headline)
                         .foregroundColor(.primary) 

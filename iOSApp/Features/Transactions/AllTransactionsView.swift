@@ -5,7 +5,7 @@ struct AllTransactionsView: View {
     @State private var transactions: [Transaction] = []
     @State private var accounts: [Account] = []
     @State private var payeesById: [String: Payee] = [:]
-    @State private var categoriesById: [String: String] = [:]
+    @State private var categoriesById: [String: Category] = [:]
     @State private var errorMessage: String?
     @State private var isLoading = false
     @State private var onBudgetOnly: Bool = true
@@ -155,7 +155,7 @@ struct AllTransactionsView: View {
             let payeesList = try await repository.fetchPayees()
             let categories = try await repository.fetchCategories()
             
-            let mappingCats = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.name) })
+            let mappingCats = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
             let mappingPayees = Dictionary(uniqueKeysWithValues: payeesList.map { ($0.id, $0) })
             
             var allTxs = [Transaction]()
