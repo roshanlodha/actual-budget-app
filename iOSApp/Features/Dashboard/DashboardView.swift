@@ -1,5 +1,4 @@
 import SwiftUI
-import WidgetKit
 
 struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
@@ -161,8 +160,6 @@ struct DashboardView: View {
                 self.transactions = allTxs
                 self.categoriesById = Dictionary(uniqueKeysWithValues: catList.map { ($0.id, $0.name) })
                 self.payeesById = Dictionary(uniqueKeysWithValues: payeeList.map { ($0.id, $0) })
-                
-                SharedDataManager.shared.save(spentToday: self.spentToday(), currencyCode: self.appState.currencyCode)
             }
         } catch {
             await MainActor.run { errorMessage = error.localizedDescription }

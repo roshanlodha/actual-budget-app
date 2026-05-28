@@ -156,6 +156,9 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
             ) { result in
                 handleFileImport(result: result)
             }
+            .onChange(of: dateColumn) { oldValue, newValue in
+                detectDateFormat(columnName: newValue)
+            }
         }
         .tint(AppTheme.accent)
     }
@@ -869,6 +872,46 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
             dismiss()
         } catch {
             await MainActor.run { errorMessage = error.localizedDescription }
+        }
+    }
+    
+    private func detectDateFormat(columnName: String) {
+        guard !columnName.isEmpty else { return }
+        let rows = CSVParser.parse(
+            text: csvText,
+            delimiter: delimiter.first ?? ",",
+            skipStartLines: skipStartLines,
+            skipEndLines: skipEndLines
+        )
+        var dataRows = rows
+        if hasHeader && !dataRows.isEmpty {
+            dataRows.removeFirst()
+        }
+        guard let firstDataRow = dataRows.first,
+              let dateIdx = parsedHeaders.firstIndex(of: columnName),
+              dateIdx < firstDataRow.count else { return }
+        
+        let sampleDateStr = firstDataRow[dateIdx]
+        autoDetectDateFormat(dateString: sampleDateStr)
+    }
+    
+    private func autoDetectDateFormat(dateString: String) {
+        let formats = [
+            "MM/dd/yy",
+            "MM/dd/yyyy",
+            "dd/MM/yy",
+            "dd/MM/yyyy",
+            "yyyy-MM-dd",
+            "yyyy/MM/dd"
+        ]
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        for format in formats {
+            f.dateFormat = format
+            if f.date(from: dateString.trimmingCharacters(in: .whitespacesAndNewlines)) != nil {
+                self.dateFormat = format
+                return
+            }
         }
     }
     

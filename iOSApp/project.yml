@@ -24,8 +24,6 @@ targets:
         excludes: [README.md]
       - path: Shared
       - path: Data
-    dependencies:
-      - target: SummaryWidgetExtension
     info:
       path: Resources/Info.plist
       properties:
@@ -43,36 +41,6 @@ targets:
         PROVISIONING_PROFILE_SPECIFIER: ""
         CODE_SIGN_ENTITLEMENTS: Resources/ActualAccounts.entitlements
         INFOPLIST_FILE: Resources/Info.plist
-        MARKETING_VERSION: $(MARKETING_VERSION)
-        CURRENT_PROJECT_VERSION: $(CURRENT_PROJECT_VERSION)
-
-  SummaryWidgetExtension:
-    type: app-extension
-    platform: iOS
-    configFiles:
-      Debug: Resources/Version.xcconfig
-      Release: Resources/Version.xcconfig
-    sources:
-      - path: SummaryWidget
-      - path: Shared
-      - path: UI
-      - path: Data
-    info:
-      path: SummaryWidget/Info.plist
-      properties:
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.widgetkit-extension
-        CFBundleShortVersionString: '$(MARKETING_VERSION)'
-        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.actual.accounts.SummaryWidget
-        CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
-        PROVISIONING_PROFILE_SPECIFIER: ""
-        CODE_SIGN_ENTITLEMENTS: SummaryWidget/SummaryWidgetExtension.entitlements
-        INFOPLIST_FILE: SummaryWidget/Info.plist
-        APPLICATION_EXTENSION_API_ONLY: YES
         MARKETING_VERSION: $(MARKETING_VERSION)
         CURRENT_PROJECT_VERSION: $(CURRENT_PROJECT_VERSION)
 
