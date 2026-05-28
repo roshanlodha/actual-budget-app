@@ -851,6 +851,18 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     }
                 }
                 
+                var finalCategoryId = pTx.categoryId
+                if finalCategoryId == nil {
+                    let noteText = pTx.notes ?? ""
+                    if let detectedId = await AutoClassifier.shared.autoCategorize(payeeName: pTx.payeeName, notes: noteText, categories: categories) {
+                        finalCategoryId = detectedId
+                    } else {
+                        if let otherCat = categories.first(where: { $0.name.localizedCaseInsensitiveCompare("Other") == .orderedSame }) {
+                            finalCategoryId = otherCat.id
+                        }
+                    }
+                }
+                
                 let tx = Transaction(
                     id: UUID().uuidString,
                     account: account.id,
@@ -859,7 +871,7 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     payee: finalPayeeId,
                     payee_name: finalPayeeName,
                     imported_payee: pTx.payeeName,
-                    category: pTx.categoryId,
+                    category: finalCategoryId,
                     notes: pTx.notes,
                     imported_id: "csv_import_\(UUID().uuidString.prefix(8))",
                     transfer_id: nil,

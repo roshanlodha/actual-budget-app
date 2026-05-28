@@ -1,0 +1,23 @@
+{
+  "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/Data/Persistence/SQLiteDB.swift" : {
+    "const-values" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/SQLiteDB.swiftconstvalues",
+    "dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/SQLiteDB.d",
+    "diagnostics" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/SQLiteDB.dia",
+    "object" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/SQLiteDB.o",
+    "swift-dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/SQLiteDB.swiftdeps"
+  },
+  "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/Features/Onboarding/OnboardingView.swift" : {
+    "const-values" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/OnboardingView.swiftconstvalues",
+    "dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/OnboardingView.d",
+    "diagnostics" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/OnboardingView.dia",
+    "object" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/OnboardingView.o",
+    "swift-dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/OnboardingView.swiftdeps"
+  },
+  "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/Features/RootView.swift" : {
+    "const-values" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/RootView.swiftconstvalues",
+    "dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/RootView.d",
+    "diagnostics" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/RootView.dia",
+    "object" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/RootView.o",
+    "swift-dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/RootView.swiftdeps"
+  }
+}

@@ -36,41 +36,21 @@ struct OnboardingView: View {
     ]
     
     private let predefinedTemplates = [
-        // Income
-        CategorySetup(name: "Salary", isIncome: true, color: "#4ECCA3", icon: "briefcase.fill"),
-        CategorySetup(name: "Freelance", isIncome: true, color: "#00ADB5", icon: "laptopcomputer"),
-        CategorySetup(name: "Investments", isIncome: true, color: "#5A20CB", icon: "chart.line.uptrend.xyaxis"),
-        CategorySetup(name: "Gifts / Other", isIncome: true, color: "#FF8AAE", icon: "gift.fill"),
-        
-        // Fixed
-        CategorySetup(name: "Rent / Mortgage", isIncome: false, color: "#FF6B6B", icon: "house.fill"),
-        CategorySetup(name: "Utilities", isIncome: false, color: "#FF9233", icon: "bolt.fill"),
-        CategorySetup(name: "Internet & TV", isIncome: false, color: "#FFC93C", icon: "wifi"),
-        CategorySetup(name: "Phone", isIncome: false, color: "#FFC93C", icon: "phone.fill"),
-        CategorySetup(name: "Insurance", isIncome: false, color: "#8D93AB", icon: "shield.fill"),
-        
-        // Flexible
-        CategorySetup(name: "Groceries", isIncome: false, color: "#FF8AAE", icon: "cart.fill"),
-        CategorySetup(name: "Dining Out", isIncome: false, color: "#FF9233", icon: "fork.knife"),
-        CategorySetup(name: "Coffee & Snacks", isIncome: false, color: "#FFC93C", icon: "cup.and.saucer.fill"),
-        CategorySetup(name: "Shopping", isIncome: false, color: "#FF8AAE", icon: "bag.fill"),
-        CategorySetup(name: "Entertainment", isIncome: false, color: "#A66CFF", icon: "popcorn.fill"),
+        CategorySetup(name: "Taxes", isIncome: false, color: "#8D93AB", icon: "percent"),
+        CategorySetup(name: "Savings", isIncome: false, color: "#5A20CB", icon: "banknote.fill"),
         CategorySetup(name: "Travel", isIncome: false, color: "#39A2DB", icon: "airplane"),
-        CategorySetup(name: "Subscriptions", isIncome: false, color: "#FF6B6B", icon: "creditcard.fill"),
-        CategorySetup(name: "Fuel / Gas", isIncome: false, color: "#FF9233", icon: "fuelpump.fill"),
-        CategorySetup(name: "Public Transit", isIncome: false, color: "#39A2DB", icon: "tram.fill"),
-        CategorySetup(name: "Gym & Fitness", isIncome: false, color: "#4ECCA3", icon: "figure.run"),
-        CategorySetup(name: "Medical & Health", isIncome: false, color: "#FF6B6B", icon: "heart.fill"),
-        CategorySetup(name: "Personal Care", isIncome: false, color: "#FF8AAE", icon: "sparkles"),
-        
-        // Savings
-        CategorySetup(name: "Emergency Fund", isIncome: false, color: "#5A20CB", icon: "banknote.fill"),
-        CategorySetup(name: "Savings Goal", isIncome: false, color: "#5A20CB", icon: "banknote.fill"),
-        CategorySetup(name: "Debt Paydown", isIncome: false, color: "#FF6B6B", icon: "creditcard.and.loop")
+        CategorySetup(name: "Groceries", isIncome: false, color: "#FF8AAE", icon: "cart.fill"),
+        CategorySetup(name: "Eating Out", isIncome: false, color: "#FF9233", icon: "fork.knife"),
+        CategorySetup(name: "Clothes & Hair", isIncome: false, color: "#A66CFF", icon: "tshirt.fill"),
+        CategorySetup(name: "Business", isIncome: true, color: "#4ECCA3", icon: "briefcase.fill"),
+        CategorySetup(name: "Rent", isIncome: false, color: "#FF6B6B", icon: "house.fill"),
+        CategorySetup(name: "Utilities, Internet, Insurance", isIncome: false, color: "#FFC93C", icon: "bolt.fill"),
+        CategorySetup(name: "Transportation and Gas", isIncome: false, color: "#39A2DB", icon: "car.fill"),
+        CategorySetup(name: "Other", isIncome: false, color: "#8D93AB", icon: "tag.fill")
     ]
     
     private let defaultSelectedNames: Set<String> = [
-        "Salary", "Rent / Mortgage", "Utilities", "Groceries", "Dining Out", "Shopping", "Emergency Fund"
+        "Business", "Rent", "Utilities, Internet, Insurance", "Groceries", "Eating Out", "Transportation and Gas", "Savings", "Other"
     ]
     
     init() {
@@ -181,57 +161,68 @@ struct OnboardingView: View {
     
     private var step2View: some View {
         VStack(spacing: 16) {
-            Text("Tap standard categories to add them, or create your own below.")
+            Text("Select categories to add to your budget. \"Other\" is required.")
                 .font(AppTheme.Fonts.footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
             ScrollView {
                 VStack(spacing: 20) {
-                    // Standard Selection
+                    // Standard Selection in a clean list structure
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Predefined Categories")
+                        Text("Standard Categories")
                             .font(AppTheme.Fonts.subtitle)
                             .foregroundColor(.primary)
                         
-                        let columns = [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: 10)]
-                        
-                        LazyVGrid(columns: columns, spacing: 10) {
+                        VStack(spacing: 0) {
                             ForEach(predefinedTemplates) { template in
                                 let isSelected = selectedCategories.contains(where: { $0.name == template.name })
-                                Button {
-                                    togglePredefined(template)
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: template.icon ?? "tag.fill")
-                                            .foregroundColor(.white)
-                                            .frame(width: 24, height: 24)
-                                            .background(Color(hex: template.color ?? "#8D93AB"))
-                                            .clipShape(Circle())
-                                        
-                                        Text(template.name)
+                                let isOther = template.name == "Other"
+                                
+                                HStack(spacing: 16) {
+                                    Image(systemName: template.icon ?? "tag.fill")
+                                        .font(.body)
+                                        .foregroundColor(Color(hex: template.color ?? "#8D93AB"))
+                                        .frame(width: 24, height: 24)
+                                    
+                                    Text(template.name)
+                                        .font(AppTheme.Fonts.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    if isOther {
+                                        Text("Mandatory")
                                             .font(AppTheme.Fonts.footnote)
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
-                                        
-                                        Spacer()
-                                        
-                                        if isSelected {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(AppTheme.accent)
-                                        }
+                                            .foregroundColor(.secondary)
+                                            .padding(.trailing, 8)
+                                    } else {
+                                        Toggle("", isOn: Binding(
+                                            get: { isSelected },
+                                            set: { shouldSelect in
+                                                if shouldSelect {
+                                                    if !selectedCategories.contains(where: { $0.name == template.name }) {
+                                                        selectedCategories.append(template)
+                                                    }
+                                                } else {
+                                                    selectedCategories.removeAll(where: { $0.name == template.name })
+                                                }
+                                            }
+                                        ))
+                                        .labelsHidden()
+                                        .tint(AppTheme.accent)
                                     }
-                                    .padding(8)
-                                    .background(isSelected ? AppTheme.accent.opacity(0.1) : Color.primary.opacity(0.03))
-                                    .cornerRadius(10)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .stroke(isSelected ? AppTheme.accent : Color.clear, lineWidth: 1)
-                                    )
                                 }
-                                .buttonStyle(.plain)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 14)
+                                .background(Color.primary.opacity(0.03))
+                                
+                                if template.id != predefinedTemplates.last?.id {
+                                    Divider().padding(.leading, 54)
+                                }
                             }
                         }
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     
                     Divider()
@@ -321,12 +312,11 @@ struct OnboardingView: View {
                             
                             VStack(alignment: .leading, spacing: 8) {
                                 ForEach(selectedCategories) { cat in
+                                    let isOther = cat.name == "Other"
                                     HStack {
                                         Image(systemName: cat.icon ?? "tag.fill")
-                                            .foregroundColor(.white)
+                                            .foregroundColor(Color(hex: cat.color ?? "#8D93AB"))
                                             .frame(width: 24, height: 24)
-                                            .background(Color(hex: cat.color ?? "#8D93AB"))
-                                            .clipShape(Circle())
                                         
                                         Text(cat.name)
                                             .font(AppTheme.Fonts.body)
@@ -338,11 +328,13 @@ struct OnboardingView: View {
                                             .font(AppTheme.Fonts.caption)
                                             .foregroundColor(.secondary)
                                         
-                                        Button {
-                                            selectedCategories.removeAll(where: { $0.id == cat.id })
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.secondary)
+                                        if !isOther {
+                                            Button {
+                                                selectedCategories.removeAll(where: { $0.id == cat.id })
+                                            } label: {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .foregroundColor(.secondary)
+                                            }
                                         }
                                     }
                                     .padding(8)
@@ -376,12 +368,13 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppTheme.accent)
-                .disabled(selectedCategories.isEmpty)
+                .disabled(selectedCategories.isEmpty || !selectedCategories.contains(where: { $0.name == "Other" }))
             }
         }
     }
     
     private func togglePredefined(_ template: CategorySetup) {
+        if template.name == "Other" { return }
         if let idx = selectedCategories.firstIndex(where: { $0.name == template.name }) {
             selectedCategories.remove(at: idx)
         } else {
@@ -407,18 +400,13 @@ struct OnboardingView: View {
     
     private func getGroupName(for category: CategorySetup) -> String {
         if category.isIncome { return "Income" }
-        // If we have custom group details, we should store it.
-        // Predefined matches:
         switch category.name {
-        case "Rent / Mortgage", "Utilities", "Internet & TV", "Phone", "Insurance", "Subscriptions":
+        case "Rent", "Utilities, Internet, Insurance", "Taxes":
             return "Fixed Expenses"
-        case "Emergency Fund", "Savings Goal", "Debt Paydown":
+        case "Savings":
             return "Savings & Investments"
         default:
-            // For custom categories, we can look up if it's already in selectedCategories with a customGroup mapping
-            // But custom categories carry their group in temporary selection. To keep it simple:
-            // We can match preset groups
-            return category.isIncome ? "Income" : "Flexible Spending"
+            return "Flexible Spending"
         }
     }
     

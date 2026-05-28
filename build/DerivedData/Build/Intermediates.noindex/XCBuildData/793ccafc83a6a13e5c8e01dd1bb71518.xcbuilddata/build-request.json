@@ -1,0 +1,64 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "7e99de71b39c28446a0a5bedeb6409d17977777b916560c37604a842ea4e4b3a"
+    }
+  ],
+  "containerPath" : "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/ActualAccounts.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "undefined_arch",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : true,
+      "hostTargetedPlatform" : null,
+      "platform" : "iphonesimulator",
+      "sdk" : "iphonesimulator26.5",
+      "sdkVariant" : "iphonesimulator",
+      "supportedArchitectures" : [
+        "i386",
+        "x86_64"
+      ],
+      "targetArchitecture" : "undefined_arch"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Products",
+      "derivedDataPath" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData",
+      "indexDataStoreFolderPath" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Debug",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "ONLY_ACTIVE_ARCH" : "YES"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

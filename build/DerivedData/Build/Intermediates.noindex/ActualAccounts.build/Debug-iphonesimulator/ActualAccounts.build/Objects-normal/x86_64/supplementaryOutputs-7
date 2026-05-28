@@ -1,0 +1,23 @@
+{
+  "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/Data/Persistence/LocalBudgetFileManager.swift" : {
+    "const-values" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LocalBudgetFileManager.swiftconstvalues",
+    "dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LocalBudgetFileManager.d",
+    "diagnostics" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LocalBudgetFileManager.dia",
+    "object" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LocalBudgetFileManager.o",
+    "swift-dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LocalBudgetFileManager.swiftdeps"
+  },
+  "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/UI/GlassTextFieldStyle.swift" : {
+    "const-values" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/GlassTextFieldStyle.swiftconstvalues",
+    "dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/GlassTextFieldStyle.d",
+    "diagnostics" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/GlassTextFieldStyle.dia",
+    "object" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/GlassTextFieldStyle.o",
+    "swift-dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/GlassTextFieldStyle.swiftdeps"
+  },
+  "/Users/roshanlodha/Documents/actual-budget-app/iOSApp/UI/LiquidBackground.swift" : {
+    "const-values" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LiquidBackground.swiftconstvalues",
+    "dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LiquidBackground.d",
+    "diagnostics" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LiquidBackground.dia",
+    "object" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LiquidBackground.o",
+    "swift-dependencies" : "/Users/roshanlodha/Documents/actual-budget-app/build/DerivedData/Build/Intermediates.noindex/ActualAccounts.build/Debug-iphonesimulator/ActualAccounts.build/Objects-normal/x86_64/LiquidBackground.swiftdeps"
+  }
+}

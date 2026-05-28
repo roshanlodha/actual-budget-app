@@ -4,25 +4,23 @@ public struct BudgetSeeder {
     public static func seedStarterData(db: SQLiteDB) throws {
         let categoriesToSeed: [(groupName: String, isIncome: Bool, subCategories: [(name: String, color: String, icon: String)])] = [
             ("Income", true, [
-                ("Salary", "#4ECCA3", "briefcase.fill"),
-                ("Other Income", "#00ADB5", "dollarsign.circle.fill")
+                ("Business", "#4ECCA3", "briefcase.fill")
             ]),
             ("Fixed Expenses", false, [
-                ("Rent/Mortgage", "#FF6B6B", "house.fill"),
-                ("Utilities", "#FF9233", "bolt.fill"),
-                ("Internet/Phone", "#FFC93C", "wifi"),
-                ("Insurance", "#8D93AB", "shield.fill")
+                ("Rent", "#FF6B6B", "house.fill"),
+                ("Utilities, Internet, Insurance", "#FFC93C", "bolt.fill"),
+                ("Taxes", "#8D93AB", "percent")
             ]),
             ("Flexible Spending", false, [
                 ("Groceries", "#FF8AAE", "cart.fill"),
-                ("Dining Out", "#FF9233", "fork.knife"),
-                ("Entertainment", "#A66CFF", "popcorn.fill"),
-                ("Shopping", "#FF8AAE", "bag.fill"),
-                ("Travel", "#39A2DB", "airplane")
+                ("Eating Out", "#FF9233", "fork.knife"),
+                ("Travel", "#39A2DB", "airplane"),
+                ("Clothes & Hair", "#A66CFF", "tshirt.fill"),
+                ("Transportation and Gas", "#39A2DB", "car.fill"),
+                ("Other", "#8D93AB", "tag.fill")
             ]),
             ("Savings & Investments", false, [
-                ("Emergency Fund", "#5A20CB", "banknote.fill"),
-                ("Retirement", "#5A20CB", "banknote.fill")
+                ("Savings", "#5A20CB", "banknote.fill")
             ])
         ]
         
