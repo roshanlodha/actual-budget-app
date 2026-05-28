@@ -32,16 +32,25 @@ public final class AutoClassifier {
         
         let categoryNames = categories.map { $0.name }
         
-        // Setup prompt
+        // Setup prompt (no specific brand names mentioned)
         let prompt = """
-        Analyze this transaction:
-        Payee: "\(cleanPayee)"
-        Notes: "\(cleanNotes)"
+        You are a financial assistant classifying bank transactions.
         
-        Match this transaction to the best fitting category name from this list:
+        Transaction Payee: "\(cleanPayee)"
+        Transaction Notes: "\(cleanNotes)"
+        
+        Allowed Categories:
         \(categoryNames.joined(separator: ", "))
         
-        If none of these categories fit reasonably, return 'Other'.
+        Analyze the payee and notes to identify the category. For example:
+        - Flight, airline, hotel, car rental, or travel agency matches 'Travel'.
+        - Supermarket, food store, or organic market matches 'Groceries'.
+        - Cafe, coffee shop, restaurant, diner, fast food, or pub matches 'Eating Out'.
+        - Rent, housing, apartment lease, or mortgage matches 'Rent'.
+        - Electricity, gas, water, internet, phone, or home/auto insurance matches 'Utilities, Internet, Insurance'.
+        - Gas station, fuel, toll, parking, bus, train, or metro matches 'Transportation and Gas'.
+        
+        Select the best category from the Allowed Categories. If no categories fit, return 'Other'.
         """
         
         do {
@@ -54,8 +63,7 @@ public final class AutoClassifier {
                 return matchedCategory.id
             }
         } catch {
-            AppLogger.shared.log("Auto-categorization failed: \(error.localizedDescription)", level: .error)
-            print("Auto-categorization error: \(error)")
+            AppLogger.shared.log("Auto-categorization LLM failed: \(error.localizedDescription)", level: .error)
         }
         
         return nil

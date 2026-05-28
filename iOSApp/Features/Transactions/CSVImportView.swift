@@ -231,8 +231,15 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                         autoMapColumns()
                         withAnimation { step = 2 }
                     } else {
-                        generatePreview()
-                        withAnimation { step = 3 }
+                        Task {
+                            if categories.isEmpty {
+                                await loadMetaData()
+                            }
+                            await MainActor.run {
+                                generatePreview()
+                                withAnimation { step = 3 }
+                            }
+                        }
                     }
                 } label: {
                     Text("Next")
@@ -824,6 +831,9 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
     
     private func performImport() async {
         do {
+            if categories.isEmpty {
+                await loadMetaData()
+            }
             let toImport = previewTransactions.filter { $0.isSelected }
             
             if clearTransactions {
