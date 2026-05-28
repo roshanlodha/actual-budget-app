@@ -1,66 +1,89 @@
 import Foundation
 import Combine
 
-final class AppState: ObservableObject {
-    // --- NEW: Theme Management ---
-    enum Theme: String, CaseIterable, Identifiable {
-        case Dark = "Dark"
-        case amoledDark = "Dark (AMOLED)"
-        case systemLight = "System Light"
-        var id: String { self.rawValue }
+public final class AppState: ObservableObject {
+    public enum OnboardingState {
+        case noBudgetSelected
+        case ready
     }
     
-    @Published var currentTheme: Theme {    
-        didSet { UserDefaults.standard.set(currentTheme.rawValue, forKey: Keys.currentTheme) }
-    }
-    
-    // Other properties...
-    @Published var baseURLString: String {
+    @Published var selectedBudgetID: String? {
         didSet {
-            UserDefaults.standard.set(baseURLString, forKey: Keys.baseURL)
-            AppLogger.shared.updateRedactionBaseURL(baseURLString)
+            if let selectedBudgetID = selectedBudgetID {
+                UserDefaults.standard.set(selectedBudgetID, forKey: Keys.selectedBudgetID)
+                do {
+                    try LocalBudgetFileManager.shared.createBudgetDirectory(for: selectedBudgetID)
+                    let path = LocalBudgetFileManager.shared.sqliteFileURL(for: selectedBudgetID).path
+                    let db = try SQLiteDB(path: path)
+                    self.repository = LocalBudgetRepository(db: db)
+                    self.onboardingState = .ready
+                } catch {
+                    AppLogger.shared.log("Error initializing budget database: \(error.localizedDescription)", level: .error)
+                    print("Error initializing budget database: \(error)")
+                    self.repository = nil
+                    self.onboardingState = .noBudgetSelected
+                }
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.selectedBudgetID)
+                self.repository = nil
+                self.onboardingState = .noBudgetSelected
+            }
         }
     }
-    @Published var apiKey: String {
-        didSet { UserDefaults.standard.set(apiKey, forKey: Keys.apiKey) }
+    
+    @Published var selectedBudgetDisplayName: String = "" {
+        didSet { UserDefaults.standard.set(selectedBudgetDisplayName, forKey: Keys.selectedBudgetDisplayName) }
     }
-    @Published var syncId: String {
-        didSet { UserDefaults.standard.set(syncId, forKey: Keys.syncId) }
-    }
-    @Published var budgetEncryptionPassword: String {
-        didSet { UserDefaults.standard.set(budgetEncryptionPassword, forKey: Keys.budgetEncryptionPassword) }
-    }
+    
     @Published var currencyCode: String {
         didSet { UserDefaults.standard.set(currencyCode, forKey: Keys.currencyCode) }
     }
-
-    var isConfigured: Bool { !baseURLString.isEmpty && !apiKey.isEmpty && !syncId.isEmpty }
-
-    init() {
-        self.baseURLString = UserDefaults.standard.string(forKey: Keys.baseURL) ?? ""
-        self.apiKey = UserDefaults.standard.string(forKey: Keys.apiKey) ?? ""
-        self.syncId = UserDefaults.standard.string(forKey: Keys.syncId) ?? ""
-        self.budgetEncryptionPassword = UserDefaults.standard.string(forKey: Keys.budgetEncryptionPassword) ?? ""
+    
+    @Published var currentTheme: Theme {
+        didSet { UserDefaults.standard.set(currentTheme.rawValue, forKey: Keys.currentTheme) }
+    }
+    
+    @Published var onboardingState: OnboardingState = .noBudgetSelected
+    @Published var repository: BudgetRepository?
+    
+    public enum Theme: String, CaseIterable, Identifiable {
+        case Dark = "Dark"
+        case amoledDark = "Dark (AMOLED)"
+        case systemLight = "System Light"
+        public var id: String { self.rawValue }
+    }
+    
+    // --- SHIMS FOR COMPILABILITY WITH LEGACY NETWORKING CODE ---
+    // (To be deleted in Phase 4 once Views are updated and Networking is removed)
+    @Published public var baseURLString: String = "local://database"
+    @Published public var apiKey: String = "local_key"
+    @Published public var syncId: String = "local_sync"
+    @Published public var budgetEncryptionPassword: String = ""
+    public var isConfigured: Bool { onboardingState == .ready }
+    public func resetConfiguration() {
+        selectedBudgetID = nil
+    }
+    // -----------------------------------------------------------
+    
+    public init() {
         self.currencyCode = UserDefaults.standard.string(forKey: Keys.currencyCode) ?? Locale.current.currency?.identifier ?? "USD"
-        
         let savedTheme = UserDefaults.standard.string(forKey: Keys.currentTheme) ?? ""
         self.currentTheme = Theme(rawValue: savedTheme) ?? .amoledDark
-        AppLogger.shared.updateRedactionBaseURL(self.baseURLString)
+        self.selectedBudgetDisplayName = UserDefaults.standard.string(forKey: Keys.selectedBudgetDisplayName) ?? ""
+        
+        if let budgetId = UserDefaults.standard.string(forKey: Keys.selectedBudgetID) {
+            DispatchQueue.main.async {
+                self.selectedBudgetID = budgetId
+            }
+        } else {
+            self.onboardingState = .noBudgetSelected
+        }
     }
-
-    func resetConfiguration() {
-        baseURLString = ""
-        apiKey = ""
-        syncId = ""
-        budgetEncryptionPassword = ""
-    }
-
+    
     private enum Keys {
-        static let baseURL = "ActualBaseURL"
-        static let apiKey = "ActualAPIKey"
-        static let syncId = "ActualSyncId"
-        static let budgetEncryptionPassword = "ActualBudgetEncryptionPassword"
+        static let selectedBudgetID = "SelectedBudgetID"
+        static let selectedBudgetDisplayName = "SelectedBudgetDisplayName"
         static let currencyCode = "ActualCurrencyCode"
-        static let currentTheme = "ActualCurrentTheme" // New key
+        static let currentTheme = "ActualCurrentTheme"
     }
 }

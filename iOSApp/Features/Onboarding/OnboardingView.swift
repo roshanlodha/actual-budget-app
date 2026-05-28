@@ -2,104 +2,91 @@ import SwiftUI
 
 struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var baseURL: String = ""
-    @State private var apiKey: String = ""
-    @State private var syncId: String = ""
-    @State private var password: String = ""
-
+    @State private var budgetName: String = ""
+    @State private var errorMessage: String?
+    
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            AppBackground()
             VStack(spacing: 24) {
                 Spacer()
-                Text("Connect to Actual Server")
+                Text("Welcome to Actual")
                     .font(AppTheme.Fonts.largeTitle)
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
+                
+                Text("Create your local budget on-device. Safe, fast, offline-first.")
+                    .font(AppTheme.Fonts.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
 
                 GlassCard {
-                    VStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Base URL")
-                                .font(AppTheme.Fonts.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                            TextField("", text: $baseURL, prompt: Text("https://example.com/v1").foregroundColor(.white.opacity(0.6)))
-                                .foregroundColor(.white)
-                                .tint(Color.white.opacity(0.85))
-                                .textContentType(.URL)
-                                .keyboardType(.URL)
-                                .autocapitalization(.none)
-                                .textInputAutocapitalization(.never)
-                                .disableAutocorrection(true)
-                           
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("API Key")
-                                .font(AppTheme.Fonts.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                            TextField("", text: $apiKey, prompt: Text("Your API Key").foregroundColor(.white.opacity(0.6)))
-                                .foregroundColor(.white)
-                                .tint(Color.white.opacity(0.85))
-                                .textContentType(.password)
-                                .autocapitalization(.none)
-                                .textInputAutocapitalization(.never)
-                                .disableAutocorrection(true)
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Sync ID")
-                                .font(AppTheme.Fonts.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                            TextField("", text: $syncId, prompt: Text("Your Sync ID").foregroundColor(.white.opacity(0.6)))
-                                .foregroundColor(.white)
-                                .tint(Color.white.opacity(0.85))
-                                .autocapitalization(.none)
-                                .textInputAutocapitalization(.never)
-                                .disableAutocorrection(true)
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Budget Encryption Password (optional)")
-                                .font(AppTheme.Fonts.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                            SecureField("", text: $password, prompt: Text("Password (if set)").foregroundColor(.white.opacity(0.6)))
-                                .foregroundColor(.white)
-                                .tint(Color.white.opacity(0.85))
-                        }
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Budget Display Name")
+                            .font(AppTheme.Fonts.subheadline)
+                            .foregroundColor(.secondary)
+                        TextField("", text: $budgetName, prompt: Text("e.g. My Personal Finances").foregroundColor(.secondary.opacity(0.5)))
+                            .foregroundColor(.primary)
+                            .textFieldStyle(.plain)
+                            .padding(10)
+                            .background(Color.primary.opacity(0.05))
+                            .cornerRadius(8)
                     }
-                    .textFieldStyle(GlassTextFieldStyle())
                 }
                 .padding(.horizontal)
 
-                Button(action: save) {
-                    Text("Continue")
+                Button(action: createBudget) {
+                    Text("Create New Budget")
                         .font(AppTheme.Fonts.headline)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(AppTheme.accent)
-                .disabled(!isValid)
+                .disabled(budgetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .padding(.horizontal)
                 
                 Spacer()
             }
             .padding()
         }
-        .onAppear {
-            baseURL = appState.baseURLString
-            apiKey = appState.apiKey
-            syncId = appState.syncId
-            password = appState.budgetEncryptionPassword
-        }
+        .alert("Error", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    errorMessage = nil
+                }
+            }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: { Text(errorMessage ?? "") }
     }
 
-    private var isValid: Bool { !baseURL.isEmpty && !apiKey.isEmpty && !syncId.isEmpty }
-
-    private func save() {
-        appState.baseURLString = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        appState.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        appState.syncId = syncId.trimmingCharacters(in: .whitespacesAndNewlines)
-        appState.budgetEncryptionPassword = password
+    private func createBudget() {
+        let cleanName = budgetName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return }
+        let budgetId = UUID().uuidString
+        
+        let metaURL = LocalBudgetFileManager.shared.metadataFileURL(for: budgetId)
+        do {
+            try LocalBudgetFileManager.shared.createBudgetDirectory(for: budgetId)
+            
+            let metadata: [String: Any] = [
+                "displayName": cleanName,
+                "createdAt": ISO8601DateFormatter().string(from: Date()),
+                "lastModifiedAt": ISO8601DateFormatter().string(from: Date())
+            ]
+            let data = try JSONSerialization.data(withJSONObject: metadata)
+            try data.write(to: metaURL)
+            
+            appState.selectedBudgetDisplayName = cleanName
+            appState.selectedBudgetID = budgetId
+            
+            if appState.onboardingState == .noBudgetSelected {
+                errorMessage = "Failed to initialize the local budget database."
+            }
+        } catch {
+            errorMessage = "Failed to create budget files: \(error.localizedDescription)"
+        }
     }
 }

@@ -29,7 +29,8 @@ public final class SQLiteDB {
         
         try bind(stmt!, arguments: arguments)
         
-        if sqlite3_step(stmt) != SQLITE_DONE {
+        let rc = sqlite3_step(stmt)
+        if rc != SQLITE_DONE && rc != SQLITE_ROW {
             throw DatabaseError.executionFailed(errorMessage())
         }
     }

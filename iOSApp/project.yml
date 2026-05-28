@@ -57,6 +57,7 @@ targets:
       - path: SummaryWidget
       - path: Shared
       - path: UI
+      - path: Data
     info:
       path: SummaryWidget/Info.plist
       properties:

@@ -48,7 +48,7 @@ struct RootView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        if appState.isConfigured {
+        if appState.onboardingState == .ready {
             MainTabView()
         } else {
             OnboardingView()
