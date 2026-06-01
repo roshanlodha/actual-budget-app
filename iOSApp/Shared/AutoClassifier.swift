@@ -47,6 +47,11 @@ public final class AutoClassifier {
         Category:
         """
         
+        guard SystemLanguageModel.default.availability == .available else {
+            AppLogger.shared.log("AutoClassifier: on-device model not available", level: .warning)
+            return nil
+        }
+        
         do {
             let session = LanguageModelSession()
             let response = try await session.respond(to: prompt)

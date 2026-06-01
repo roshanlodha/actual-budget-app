@@ -1,236 +1,424 @@
 import SwiftUI
+import Charts
 
 struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var accounts: [Account] = []
-    @State private var categoriesById: [String: Category] = [:]
-    @State private var payeesById: [String: Payee] = [:]
-    @State private var transactions: [Transaction] = []
-    @State private var errorMessage: String?
-    @State private var activeSheet: SheetType?
-
-    var onBudgetAccounts: [Account] { accounts.filter { !$0.offbudget } }
-    private var recentFive: [Transaction] { recentNonTransferOnBudget().prefix(5).map { $0 } }
-    
-    private var repository: BudgetRepository {
-        guard let repo = appState.repository else { fatalError("Repository unavailable") }
-        return repo
-    }
+    @StateObject private var viewModel = DashboardViewModel()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            AppBackground()
-            List {
-                Section {
-                    VStack(spacing: 24) {
-                        Text("Overview")
-                            .font(AppTheme.Fonts.largeTitle)
-                            .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top)
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Spent This Month")
-                                    .font(AppTheme.Fonts.body)
-                                    .foregroundStyle(.secondary)
-                                Text(formatMoney(spentThisMonth()))
-                                    .font(AppTheme.Fonts.title)
-                                    .foregroundColor(.primary)
-                                    .monospacedDigit()
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                metricCard(title: "Spent Today", value: spentToday())
-                                metricCard(title: "Spent Last Month", value: spentLastMonth())
-                                metricCard(title: "On-budget Accounts", value: onBudgetAccounts.count, isMoney: false)
-                            }
+        ScrollView {
+            VStack(spacing: 20) {
+                // Section 1: Summary Stat Cards
+                HStack(spacing: 16) {
+                    // Card A: Expenses
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Monthly Expenses")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(viewModel.dateRangeLabel)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .padding(.top, 4)
+                        } else {
+                            Text(formatMoney(viewModel.ytdExpenseTotal))
+                                .font(.system(.largeTitle, design: .monospaced))
+                                .foregroundColor(Color(red: 0.85, green: 0.35, blue: 0.19))
+                                .minimumScaleFactor(0.5)
+                                .lineLimit(1)
+                                .padding(.top, 4)
                         }
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(radius: 4)
+                    
+                    // Card B: Income
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Monthly Income")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(viewModel.dateRangeLabel)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .padding(.top, 4)
+                        } else {
+                            Text(formatMoney(viewModel.ytdIncomeTotal))
+                                .font(.system(.largeTitle, design: .monospaced))
+                                .foregroundColor(.green)
+                                .minimumScaleFactor(0.5)
+                                .lineLimit(1)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(radius: 4)
                 }
-
-                Section(header:
-                    HStack {
-                        Text("Recent Activity")
-                            .font(AppTheme.Fonts.title)
-                            .foregroundColor(.primary)
-                        Spacer()
-                        NavigationLink("View All") { AllTransactionsView() }
-                            .foregroundColor(AppTheme.accent)
-                    }
-                ) {
-                    if recentFive.isEmpty {
-                        GlassCard {
-                            Text("No recent transactions to show.")
-                                .font(AppTheme.Fonts.body)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, minHeight: 100)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
+                // Section 2: Monthly Expenses Bar Chart
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Monthly Expenses")
+                        .font(.headline)
+                    Text("Year to date")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if viewModel.isLoading {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
                         }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                        .frame(height: 200)
+                    } else if viewModel.perMonthExpenseBreakdown.isEmpty || (viewModel.perMonthExpenseBreakdown.count == 1 && viewModel.perMonthExpenseBreakdown[0].category.isEmpty) {
+                        emptyStateView(title: "No Data", systemImage: "chart.bar.fill", description: "No expenses recorded for this year yet.")
+                            .frame(height: 200)
                     } else {
-                        ForEach(recentFive, id: \.id) { tx in
+                        Chart(viewModel.perMonthExpenseBreakdown) { item in
+                            if !item.category.isEmpty {
+                                BarMark(
+                                    x: .value("Month", item.monthLabel),
+                                    y: .value("Amount", item.amount)
+                                )
+                                .foregroundStyle(by: .value("Category", item.category))
+                                .accessibilityLabel("\(item.monthLabel) \(item.category) \(formatMoney(Int(item.amount * 100)))")
+                            } else {
+                                BarMark(
+                                    x: .value("Month", item.monthLabel),
+                                    y: .value("Amount", 0.0)
+                                )
+                                .foregroundStyle(.clear)
+                            }
+                        }
+                        .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
+                        .chartXAxis {
+                            AxisMarks(values: .automatic) { value in
+                                AxisValueLabel()
+                            }
+                        }
+                        .animation(reduceMotion ? nil : .spring(), value: viewModel.perMonthExpenseBreakdown)
+                        .frame(height: 200)
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(radius: 4)
+                .padding(.horizontal)
+                
+                // Section 3: Cash Flow Card
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Cash Flow")
+                                .font(.headline)
+                            Text(viewModel.dateRangeLabel)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if viewModel.isLoading {
+                            ProgressView()
+                        } else {
+                            let isNetPositive = viewModel.cashFlowNet >= 0
+                            let sign = isNetPositive ? "+" : ""
+                            Text("\(sign)\(formatMoney(viewModel.cashFlowNet))")
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundColor(isNetPositive ? .green : .red)
+                        }
+                    }
+                    
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .frame(height: 80)
+                    } else {
+                        VStack(spacing: 8) {
+                            // Expenses bar
+                            VStack(spacing: 4) {
+                                HStack {
+                                    Text("Expenses")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(formatMoney(viewModel.ytdExpenseTotal))
+                                        .font(.caption)
+                                        .monospacedDigit()
+                                }
+                                GeometryReader { geo in
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(red: 0.85, green: 0.35, blue: 0.19))
+                                        .frame(width: geo.size.width, height: 8)
+                                }
+                                .frame(height: 8)
+                            }
+                            
+                            // Income bar
+                            let incomeRatio = viewModel.ytdExpenseTotal > 0 ? Double(viewModel.ytdIncomeTotal) / Double(viewModel.ytdExpenseTotal) : (viewModel.ytdIncomeTotal > 0 ? 1.0 : 0.0)
+                            let boundedRatio = min(1.0, incomeRatio)
+                            
+                            VStack(spacing: 4) {
+                                HStack {
+                                    Text("Income")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text(formatMoney(viewModel.ytdIncomeTotal))
+                                        .font(.caption)
+                                        .monospacedDigit()
+                                }
+                                GeometryReader { geo in
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color.green)
+                                        .frame(width: geo.size.width * CGFloat(boundedRatio), height: 8)
+                                }
+                                .frame(height: 8)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(radius: 4)
+                .padding(.horizontal)
+                
+                // Section 4: This Month Mini Chart
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Month Expenses")
+                        .font(.subheadline)
+                        .bold()
+                    Text("This month")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if viewModel.isLoading {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                        .frame(height: 100)
+                    } else if viewModel.currentMonthCategoryBreakdown.isEmpty {
+                        emptyStateView(title: "No Expenses", systemImage: "chart.pie", description: "No expenses recorded this month.")
+                            .frame(height: 100)
+                    } else {
+                        Chart(viewModel.currentMonthCategoryBreakdown) { item in
+                            BarMark(
+                                x: .value("Category", item.category),
+                                y: .value("Amount", item.amount)
+                            )
+                            .foregroundStyle(by: .value("Category", item.category))
+                            .accessibilityLabel("\(item.category) \(formatMoney(Int(item.amount * 100)))")
+                        }
+                        .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
+                        .chartXScale(domain: viewModel.currentMonthCategoryBreakdown.map { $0.category })
+                        .chartLegend(.hidden)
+                        .animation(reduceMotion ? nil : .spring(), value: viewModel.currentMonthCategoryBreakdown)
+                        .frame(height: 100)
+                    }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(radius: 4)
+                .padding(.horizontal)
+                
+                // Section 5: Transaction Calendar
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Transaction Calendar")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    
+                    if viewModel.isLoading {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                        .frame(height: 150)
+                    } else {
+                        VStack(spacing: 16) {
+                            ForEach(viewModel.calendarMonths) { month in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    // Header
+                                    HStack {
+                                        Text(month.monthName)
+                                            .font(.subheadline)
+                                            .bold()
+                                        Spacer()
+                                        HStack(spacing: 8) {
+                                            Text("↑ \(formatMoney(month.totalIncome))")
+                                                .foregroundColor(.green)
+                                            Text("↓ \(formatMoney(month.totalExpense))")
+                                                .foregroundColor(.red)
+                                        }
+                                        .font(.caption)
+                                        .monospacedDigit()
+                                    }
+                                    
+                                    // Weekday headers
+                                    let weekdayHeaders = ["S", "M", "T", "W", "T", "F", "S"]
+                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                                        ForEach(weekdayHeaders, id: \.self) { day in
+                                            Text(day)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                                .frame(maxWidth: .infinity)
+                                        }
+                                        
+                                        // Day cells
+                                        ForEach(month.days) { day in
+                                            if day.isPadding {
+                                                Spacer()
+                                                    .frame(width: 44, height: 44)
+                                            } else {
+                                                Button(action: {
+                                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                    viewModel.selectDate(day)
+                                                }) {
+                                                    VStack(spacing: 2) {
+                                                        Text("\(day.dayNumber)")
+                                                            .font(.body)
+                                                            .foregroundColor(.primary)
+                                                        
+                                                        if day.income > 0 || day.expense > 0 {
+                                                            let isNetIncome = day.income > day.expense
+                                                            RoundedRectangle(cornerRadius: 2)
+                                                                .fill(isNetIncome ? Color.green : Color(red: 0.85, green: 0.35, blue: 0.19))
+                                                                .frame(width: 24, height: 4)
+                                                        } else {
+                                                            Spacer()
+                                                                .frame(height: 4)
+                                                        }
+                                                    }
+                                                    .frame(width: 44, height: 44)
+                                                    .background(
+                                                        RoundedRectangle(cornerRadius: 8)
+                                                            .fill(dayBackground(day))
+                                                    )
+                                                }
+                                                .buttonStyle(.plain)
+                                                .accessibilityLabel(accessibilityLabelForDay(day))
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                .shadow(radius: 4)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+            .padding(.vertical)
+        }
+        .navigationTitle("Dashboard")
+        .navigationBarTitleDisplayMode(.large)
+        .task {
+            if let repo = appState.repository {
+                viewModel.configure(repository: repo)
+                await viewModel.loadData()
+            }
+        }
+        .onChange(of: appState.selectedBudgetID) { _ in
+            Task {
+                if let repo = appState.repository {
+                    viewModel.configure(repository: repo)
+                    await viewModel.loadData()
+                }
+            }
+        }
+        .sheet(isPresented: $viewModel.showDetailSheet) {
+            NavigationStack {
+                List {
+                    if viewModel.selectedDateTransactions.isEmpty {
+                        Text("No transactions on this day.")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(viewModel.selectedDateTransactions, id: \.id) { tx in
                             TransactionRow(
                                 transaction: tx,
-                                accounts: accounts,
-                                payeesById: payeesById,
-                                categoriesById: categoriesById,
+                                accounts: viewModel.accounts,
+                                payeesById: viewModel.payeesById,
+                                categoriesById: viewModel.categoriesById,
                                 currencyCode: appState.currencyCode,
-                                onEdit: { t in activeSheet = .edit(t) },
-                                onDelete: { t in Task { await delete(t) } }
+                                onEdit: { _ in },
+                                onDelete: { _ in }
                             )
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
                         }
                     }
-                    Button {
-                        activeSheet = .add
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus")
-                            Text("Add Transaction")
+                }
+                .navigationTitle(viewModel.selectedDateLabel)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            viewModel.showDetailSheet = false
                         }
-                        .font(AppTheme.Fonts.headline)
-                        .foregroundColor(AppTheme.accent)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
                 }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .presentationDetents([.medium, .large])
         }
-        .navigationBarHidden(true)
-        .task { await load() }
-        .sheet(item: $activeSheet) { sheetType in
-            switch sheetType {
-            case .add:
-                TransactionEditor(transaction: nil, initialAccountId: nil, onSave: { _ in Task { await load() } })
-            case .edit(let transaction):
-                TransactionEditor(transaction: transaction, initialAccountId: nil, onSave: { _ in Task { await load() } })
-            case .importCSV:
-                EmptyView()
-            }
-        }
-        .alert("Error", isPresented: .constant(errorMessage != nil), actions: {
-            Button("OK") { errorMessage = nil }
-        }, message: {
-            Text(errorMessage ?? "An unknown error occurred.")
-        })
-    }
-
-    private func metricCard(title: String, value: Int, isMoney: Bool = true) -> some View {
-        GlassCard(cornerRadius: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(AppTheme.Fonts.footnote)
-                    .foregroundStyle(.secondary)
-                Text(isMoney ? formatMoney(value) : String(value))
-                    .font(AppTheme.Fonts.subtitle)
-                    .foregroundColor(.primary)
-            }
-            .frame(width: 140, alignment: .leading)
-        }
-    }
-
-    private func load() async {
-        do {
-            let accList = try await repository.fetchAccounts()
-            let catList = try await repository.fetchCategories()
-            let payeeList = try await repository.fetchPayees()
-            
-            let since = firstOfThisMonthMinus(days: 31)
-            var allTxs = [Transaction]()
-            for acc in accList {
-                let list = try await repository.fetchTransactions(accountId: acc.id, since: since)
-                allTxs.append(contentsOf: list)
-            }
-            
-            await MainActor.run {
-                self.accounts = accList
-                self.transactions = allTxs
-                self.categoriesById = Dictionary(uniqueKeysWithValues: catList.map { ($0.id, $0) })
-                self.payeesById = Dictionary(uniqueKeysWithValues: payeeList.map { ($0.id, $0) })
-            }
-        } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
-        }
-    }
-
-    private func spentToday() -> Int {
-        let today = format(date: Date())
-        let onBudgetIds = Set(onBudgetAccounts.map { $0.id })
-        let todays = transactions.filter { $0.date == today && onBudgetIds.contains($0.account) && !isTransfer($0) }
-        return -todays.map { $0.amount ?? 0 }.filter { $0 < 0 }.reduce(0, +)
-    }
-
-    private func spentThisMonth() -> Int {
-        let (start, end) = monthRange(date: Date())
-        let onBudgetIds = Set(onBudgetAccounts.map { $0.id })
-        let list = transactions.filter { $0.date >= start && $0.date <= end && onBudgetIds.contains($0.account) && !isTransfer($0) }
-        return -list.map { $0.amount ?? 0 }.filter { $0 < 0 }.reduce(0, +)
-    }
-
-    private func spentLastMonth() -> Int {
-        let cal = Calendar(identifier: .gregorian)
-        let lastMonthDate = cal.date(byAdding: .month, value: -1, to: Date()) ?? Date()
-        let (start, end) = monthRange(date: lastMonthDate)
-        let onBudgetIds = Set(onBudgetAccounts.map { $0.id })
-        let list = transactions.filter { $0.date >= start && $0.date <= end && onBudgetIds.contains($0.account) && !isTransfer($0) }
-        return -list.map { $0.amount ?? 0 }.filter { $0 < 0 }.reduce(0, +)
-    }
-
-    private func isTransfer(_ tx: Transaction) -> Bool {
-        if tx.transfer_id != nil { return true }
-        if let payeeId = tx.payee, let p = payeesById[payeeId], p.transfer_acct != nil { return true }
-        return false
-    }
-
-    private func recentNonTransferOnBudget() -> [Transaction] {
-        let onBudgetIds = Set(onBudgetAccounts.map { $0.id })
-        return transactions.filter { onBudgetIds.contains($0.account) && !isTransfer($0) }.sorted { $0.date > $1.date }
-    }
-    
-    private func monthRange(date: Date) -> (String, String) {
-        let cal = Calendar(identifier: .gregorian)
-        let comps = cal.dateComponents([.year, .month], from: date)
-        let startDate = cal.date(from: comps) ?? date
-        let endDate = cal.date(byAdding: DateComponents(month: 1, day: -1), to: startDate) ?? date
-        return (format(date: startDate), format(date: endDate))
-    }
-
-    private func firstOfThisMonthMinus(days: Int) -> String {
-        let cal = Calendar(identifier: .gregorian)
-        let comps = cal.dateComponents([.year, .month], from: Date())
-        let start = cal.date(from: comps) ?? Date()
-        let since = cal.date(byAdding: .day, value: -days, to: start) ?? start
-        return format(date: since)
-    }
-
-    private func format(date: Date) -> String {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
 
     private func formatMoney(_ amount: Int) -> String {
         return CurrencyFormatter.shared.format(amount, currencyCode: appState.currencyCode)
     }
 
-    private func delete(_ tx: Transaction) async {
-        guard let txId = tx.id else { return }
-        do {
-            try await repository.deleteTransaction(id: txId)
-            await load()
-        } catch {
-            await MainActor.run { errorMessage = error.localizedDescription }
+    private func dayBackground(_ day: CalendarDayData) -> Color {
+        if day.income == 0 && day.expense == 0 {
+            return .clear
+        }
+        return day.income > day.expense ? Color.green.opacity(0.12) : Color.red.opacity(0.12)
+    }
+
+    private func accessibilityLabelForDay(_ day: CalendarDayData) -> String {
+        if day.income == 0 && day.expense == 0 {
+            return "No transactions on day \(day.dayNumber)"
+        }
+        return "Day \(day.dayNumber): Income \(formatMoney(day.income)), Expenses \(formatMoney(day.expense))"
+    }
+
+    @ViewBuilder
+    private func emptyStateView(title: String, systemImage: String, description: String) -> some View {
+        if #available(iOS 17.0, *) {
+            ContentUnavailableView(
+                title,
+                systemImage: systemImage,
+                description: Text(description)
+            )
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.title)
+                    .foregroundColor(.secondary)
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 }

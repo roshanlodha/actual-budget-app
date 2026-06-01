@@ -1,6 +1,7 @@
 # local stuff
 .DS_Store
 */.DS_Store
+Sample Data/*
 
 *.ipa
 *.xcarchive

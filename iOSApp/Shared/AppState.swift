@@ -39,26 +39,16 @@ public final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(currencyCode, forKey: Keys.currencyCode) }
     }
     
-    @Published var currentTheme: Theme {
-        didSet { UserDefaults.standard.set(currentTheme.rawValue, forKey: Keys.currentTheme) }
-    }
     
     @Published var onboardingState: OnboardingState = .noBudgetSelected
     @Published var repository: BudgetRepository?
     
-    public enum Theme: String, CaseIterable, Identifiable {
-        case Dark = "Dark"
-        case amoledDark = "Dark (AMOLED)"
-        case systemLight = "System Light"
-        public var id: String { self.rawValue }
-    }
     
 
     
     public init() {
         self.currencyCode = UserDefaults.standard.string(forKey: Keys.currencyCode) ?? Locale.current.currency?.identifier ?? "USD"
-        let savedTheme = UserDefaults.standard.string(forKey: Keys.currentTheme) ?? ""
-        self.currentTheme = Theme(rawValue: savedTheme) ?? .amoledDark
+
         self.selectedBudgetDisplayName = UserDefaults.standard.string(forKey: Keys.selectedBudgetDisplayName) ?? ""
         
         if let budgetId = UserDefaults.standard.string(forKey: Keys.selectedBudgetID) {
@@ -132,7 +122,7 @@ public final class AppState: ObservableObject {
         static let selectedBudgetID = "SelectedBudgetID"
         static let selectedBudgetDisplayName = "SelectedBudgetDisplayName"
         static let currencyCode = "ActualCurrencyCode"
-        static let currentTheme = "ActualCurrentTheme"
+
     }
 }
 

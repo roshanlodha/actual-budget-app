@@ -9,6 +9,15 @@ settings:
     # The top-level team ID can be empty
     DEVELOPMENT_TEAM: ""
 
+schemes:
+  ActualAccounts:
+    build:
+      targets:
+        ActualAccounts: all
+    run:
+      config: Debug
+      debugEnabled: false
+
 targets:
   ActualAccounts:
     type: application
@@ -35,7 +44,7 @@ targets:
         CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.actual.accounts
+        PRODUCT_BUNDLE_IDENTIFIER: com.roshanlodha.actual.accounts
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
         PROVISIONING_PROFILE_SPECIFIER: ""

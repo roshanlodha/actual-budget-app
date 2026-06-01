@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
@@ -8,6 +9,7 @@ struct OnboardingView: View {
     @State private var budgetName: String = ""
     @State private var selectedCurrency: String = "USD"
     @State private var errorMessage: String?
+    @State private var showingFileImporter = false
     
     // Categories state
     @State private var selectedCategories: [CategorySetup] = []
@@ -31,7 +33,7 @@ struct OnboardingView: View {
         "house.fill", "bolt.fill", "wifi", "phone.fill", "shield.fill",
         "cart.fill", "fork.knife", "cup.and.saucer.fill", "bag.fill",
         "popcorn.fill", "airplane", "creditcard.fill", "fuelpump.fill",
-        "banknote.fill", "creditcard.and.loop", "heart.fill", "figure.run",
+        "banknote.fill", "creditcard", "heart.fill", "figure.run",
         "sparkles", "tag.fill"
     ]
     
@@ -94,6 +96,23 @@ struct OnboardingView: View {
         )) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let selectedURL = urls.first else { return }
+                do {
+                    try ActualBudgetImporter.importBudget(from: selectedURL, to: appState)
+                } catch {
+                    errorMessage = "Import failed: \(error.localizedDescription)"
+                }
+            case .failure(let error):
+                errorMessage = "Failed to select file: \(error.localizedDescription)"
+            }
+        }
     }
     
     private var step1View: some View {
@@ -112,7 +131,7 @@ struct OnboardingView: View {
                         Text("Budget Name")
                             .font(AppTheme.Fonts.subheadline)
                             .foregroundColor(.secondary)
-                        TextField("", text: $budgetName, prompt: Text("e.g. My Personal Finances").foregroundColor(.secondary.opacity(0.5)))
+                        TextField("e.g. My Personal Finances", text: $budgetName)
                             .foregroundColor(.primary)
                             .textFieldStyle(.plain)
                             .padding(12)
@@ -156,6 +175,32 @@ struct OnboardingView: View {
             .buttonStyle(.borderedProminent)
             .tint(AppTheme.accent)
             .disabled(budgetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            
+            HStack {
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 1)
+                Text("or")
+                    .font(AppTheme.Fonts.footnote)
+                    .foregroundColor(.secondary)
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 1)
+            }
+            .padding(.vertical, 8)
+            
+            Button(action: {
+                showingFileImporter = true
+            }) {
+                HStack {
+                    Image(systemName: "arrow.down.doc.fill")
+                    Text("Import from Actual")
+                }
+                .font(AppTheme.Fonts.headline)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(AppTheme.accent)
         }
     }
     

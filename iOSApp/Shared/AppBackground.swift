@@ -1,15 +1,12 @@
 import SwiftUI
 
 struct AppBackground: View {
-    @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        switch appState.currentTheme {
-        case .Dark:
+        if colorScheme == .dark {
             LiquidBackground()
-        case .amoledDark:
-            Color.black.ignoresSafeArea()
-        case .systemLight:
+        } else {
             Color(.systemGroupedBackground).ignoresSafeArea()
         }
     }

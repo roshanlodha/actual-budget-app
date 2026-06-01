@@ -33,7 +33,7 @@ EXTRA_XCODEBUILD_FLAGS ?=
 all: ios-unsigned
 
 .PHONY: ios-unsigned
-ios-unsigned: clean project
+ios-unsigned: clean
 	@echo "\n--- Step 1: Building without code signing ---"
 	@$(XCODEBUILD) -project $(PROJECT_FILE) \
 		-scheme $(SCHEME) \

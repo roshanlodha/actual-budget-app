@@ -6,15 +6,7 @@ struct MainTabView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var appStateObserver = AppStateObserver.shared
     
-    // A computed property to determine the color scheme
-    private var colorScheme: ColorScheme? {
-        switch appState.currentTheme {
-        case .Dark, .amoledDark:
-            return .dark
-        case .systemLight:
-            return .light
-        }
-    }
+
     
     var body: some View {
         TabView {
@@ -40,7 +32,7 @@ struct MainTabView: View {
         .sheet(isPresented: $appStateObserver.shouldOpenLogs) {
             NavigationStack { LogsView() }
         }
-        .preferredColorScheme(colorScheme)
+
     }
 }
 
