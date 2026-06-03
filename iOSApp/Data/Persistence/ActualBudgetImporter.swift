@@ -1,60 +1,122 @@
 import Foundation
+import SwiftUI
+
+public struct ParsedCategory: Identifiable, Hashable {
+    public var id: String { name + "||" + groupName }
+    public let name: String
+    public let groupName: String
+    
+    public init(name: String, groupName: String) {
+        self.name = name
+        self.groupName = groupName
+    }
+}
 
 public final class ActualBudgetImporter {
-    public static func importBudget(from actualSqliteURL: URL, to appState: AppState) throws {
-        // 1. Resolve security scoped resource
-        let access = actualSqliteURL.startAccessingSecurityScopedResource()
-        defer {
-            if access {
-                actualSqliteURL.stopAccessingSecurityScopedResource()
+    
+    public static func parseCategoriesFromCSV(text: String) -> [ParsedCategory] {
+        let rows = CSVParser.parse(text: text, delimiter: ",")
+        guard !rows.isEmpty else { return [] }
+        
+        let headers = rows[0]
+        var groupIdx = -1
+        var categoryIdx = -1
+        
+        for (i, h) in headers.enumerated() {
+            let clean = h.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if clean.contains("group") {
+                groupIdx = i
+            } else if clean.contains("category") {
+                categoryIdx = i
             }
         }
         
-        // 2. Determine Budget Display Name
-        var displayName = "Actual Budget"
-        let parentURL = actualSqliteURL.deletingLastPathComponent()
-        let metadataURL = parentURL.appendingPathComponent("metadata.json")
-        
-        if FileManager.default.fileExists(atPath: metadataURL.path),
-           let data = try? Data(contentsOf: metadataURL),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let budgetName = json["budgetName"] as? String {
-            displayName = budgetName
-        } else {
-            let folderName = parentURL.lastPathComponent
-            if folderName != "/" && !folderName.isEmpty && folderName != "Documents" && folderName != "Downloads" {
-                let cleaned = folderName
-                    .replacingOccurrences(of: "-", with: " ")
-                    .replacingOccurrences(of: "_", with: " ")
-                displayName = cleaned.capitalized
+        // Fallbacks
+        if groupIdx == -1 {
+            // Check if there is a Category_Group or Category Group column
+            for (i, h) in headers.enumerated() {
+                let clean = h.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if clean == "category_group" || clean == "category group" {
+                    groupIdx = i
+                }
             }
         }
         
-        // Copy database to temporary location to bypass sandbox limitations on low-level sqlite C-library
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("sqlite")
-        do {
-            if FileManager.default.fileExists(atPath: tempURL.path) {
-                try? FileManager.default.removeItem(at: tempURL)
+        guard categoryIdx != -1 else { return [] }
+        
+        var categorySet = Set<ParsedCategory>()
+        for row in rows.dropFirst() {
+            guard categoryIdx < row.count else { continue }
+            let catName = row[categoryIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+            let grpName = groupIdx != -1 && groupIdx < row.count ? row[groupIdx].trimmingCharacters(in: .whitespacesAndNewlines) : "Flexible Spending"
+            
+            if !catName.isEmpty {
+                categorySet.insert(ParsedCategory(name: catName, groupName: grpName.isEmpty ? "Flexible Spending" : grpName))
             }
-            try FileManager.default.copyItem(at: actualSqliteURL, to: tempURL)
-        } catch {
-            throw NSError(domain: "ActualBudgetImporter", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to copy database to temporary location: \(error.localizedDescription)"])
         }
         
-        defer {
-            try? FileManager.default.removeItem(at: tempURL)
+        return Array(categorySet).sorted {
+            if $0.groupName == $1.groupName {
+                return $0.name < $1.name
+            }
+            return $0.groupName < $1.groupName
+        }
+    }
+    
+    public static func importBudgetFromCSV(
+        text: String,
+        displayName: String,
+        selectedCategories: Set<String>,
+        to appState: AppState
+    ) throws {
+        let rows = CSVParser.parse(text: text, delimiter: ",")
+        guard !rows.isEmpty else {
+            throw NSError(domain: "ActualBudgetImporter", code: 1, userInfo: [NSLocalizedDescriptionKey: "CSV file is empty."])
         }
         
-        // 3. Initialize Source SQLite Database
-        let srcDB = try SQLiteDB(path: tempURL.path)
+        let headers = rows[0]
+        var accountIdx = -1
+        var dateIdx = -1
+        var payeeIdx = -1
+        var notesIdx = -1
+        var groupIdx = -1
+        var categoryIdx = -1
+        var amountIdx = -1
         
-        // Quick verification: check if transactions table exists
-        let tablesCheck = try srcDB.query("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions';")
-        guard !tablesCheck.isEmpty else {
-            throw NSError(domain: "ActualBudgetImporter", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid Actual database: 'transactions' table not found."])
+        for (i, h) in headers.enumerated() {
+            let clean = h.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if clean == "account" {
+                accountIdx = i
+            } else if clean == "date" {
+                dateIdx = i
+            } else if clean == "payee" {
+                payeeIdx = i
+            } else if clean == "notes" || clean == "memo" {
+                notesIdx = i
+            } else if clean.contains("group") {
+                groupIdx = i
+            } else if clean.contains("category") {
+                categoryIdx = i
+            } else if clean == "amount" {
+                amountIdx = i
+            }
         }
         
-        // 4. Create local budget entry
+        // Fallbacks
+        if groupIdx == -1 {
+            for (i, h) in headers.enumerated() {
+                let clean = h.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if clean == "category_group" || clean == "category group" {
+                    groupIdx = i
+                }
+            }
+        }
+        
+        guard accountIdx != -1, dateIdx != -1, payeeIdx != -1, categoryIdx != -1, amountIdx != -1 else {
+            throw NSError(domain: "ActualBudgetImporter", code: 2, userInfo: [NSLocalizedDescriptionKey: "Missing required CSV columns (Account, Date, Payee, Category, Amount)."])
+        }
+        
+        // Create local budget entry
         let budgetId = UUID().uuidString
         try LocalBudgetFileManager.shared.createBudgetDirectory(for: budgetId)
         
@@ -76,133 +138,120 @@ public final class ActualBudgetImporter {
         // Clear seeded defaults
         try destDB.execute("DELETE FROM categories;")
         try destDB.execute("DELETE FROM budget_category_groups;")
+        try destDB.execute("DELETE FROM accounts;")
+        try destDB.execute("DELETE FROM payees;")
+        try destDB.execute("DELETE FROM transactions;")
         
-        // 5. Read from Source & Write to Destination
+        // Read from Source & Write to Destination
         try destDB.transaction {
-            // A. Category Groups
-            let groups = try srcDB.query("SELECT id, name, is_income, hidden FROM category_groups WHERE tombstone = 0;")
-            for g in groups {
-                let id = g["id"] as? String ?? UUID().uuidString
-                let name = g["name"] as? String ?? "Group"
-                let isIncome = g["is_income"] as? Int ?? 0
-                let hidden = g["hidden"] as? Int ?? 0
-                try destDB.execute("INSERT INTO budget_category_groups (id, name, is_income, hidden) VALUES (?, ?, ?, ?);",
-                                   arguments: [id, name, isIncome, hidden])
-            }
+            var groupMap = [String: String]() // groupName -> ID
+            var categoryMap = [String: String]() // name||groupName -> ID
+            var accountMap = [String: String]() // accountName -> ID
+            var payeeMap = [String: String]() // payeeName -> ID
             
-            // B. Categories
-            let categories = try srcDB.query("SELECT id, name, is_income, cat_group, hidden FROM categories WHERE tombstone = 0;")
-            for c in categories {
-                let id = c["id"] as? String ?? UUID().uuidString
-                let name = c["name"] as? String ?? "Category"
-                let isIncome = c["is_income"] as? Int ?? 0
-                let groupId: Any = c["cat_group"] as? String ?? NSNull()
-                let hidden = c["hidden"] as? Int ?? 0
+            for row in rows.dropFirst() {
+                guard accountIdx < row.count, dateIdx < row.count, payeeIdx < row.count,
+                      categoryIdx < row.count, amountIdx < row.count else { continue }
                 
-                let style = colorAndIcon(for: name, isIncome: isIncome != 0)
-                try destDB.execute("INSERT INTO categories (id, name, is_income, hidden, group_id, color, icon) VALUES (?, ?, ?, ?, ?, ?, ?);",
-                                   arguments: [id, name, isIncome, hidden, groupId, style.color, style.icon])
-            }
-            
-            // C. Accounts
-            let accounts = try srcDB.query("SELECT id, name, offbudget, closed FROM accounts WHERE tombstone = 0;")
-            for a in accounts {
-                let id = a["id"] as? String ?? UUID().uuidString
-                let name = a["name"] as? String ?? "Account"
-                let offbudget = a["offbudget"] as? Int ?? 0
-                let closed = a["closed"] as? Int ?? 0
-                try destDB.execute("INSERT INTO accounts (id, name, offbudget, closed) VALUES (?, ?, ?, ?);",
-                                   arguments: [id, name, offbudget, closed])
-            }
-            
-            // D. Payees
-            let payees = try srcDB.query("SELECT id, name, category, transfer_acct FROM payees WHERE tombstone = 0;")
-            var payeeMap = [String: String]() // to look up payee names for transactions
-            for p in payees {
-                let id = p["id"] as? String ?? UUID().uuidString
-                let name = p["name"] as? String ?? "Payee"
-                let categoryId: Any = p["category"] as? String ?? NSNull()
-                let transferAcctId: Any = p["transfer_acct"] as? String ?? NSNull()
-                payeeMap[id] = name
-                try destDB.execute("INSERT INTO payees (id, name, category_id, transfer_account_id) VALUES (?, ?, ?, ?);",
-                                   arguments: [id, name, categoryId, transferAcctId])
-            }
-            
-            // E. Transactions
-            let txs = try srcDB.query("SELECT id, acct, category, amount, description, notes, date, financial_id, transferred_id, cleared FROM transactions WHERE tombstone = 0;")
-            for t in txs {
-                let id = t["id"] as? String ?? UUID().uuidString
-                let accountId = t["acct"] as? String ?? ""
-                let dateInt = t["date"] as? Int ?? 0
+                let accountName = row[accountIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                let rawDateStr = row[dateIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                let payeeName = row[payeeIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                let noteStr = notesIdx != -1 && notesIdx < row.count ? row[notesIdx].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+                let groupName = groupIdx != -1 && groupIdx < row.count ? row[groupIdx].trimmingCharacters(in: .whitespacesAndNewlines) : "Flexible Spending"
+                let categoryName = row[categoryIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                let amountStr = row[amountIdx].trimmingCharacters(in: .whitespacesAndNewlines)
                 
-                // Convert YYYYMMDD to YYYY-MM-DD
-                let dateStr: String
-                if dateInt > 0 {
-                    let year = dateInt / 10000
-                    let month = (dateInt % 10000) / 100
-                    let day = dateInt % 100
-                    dateStr = String(format: "%04d-%02d-%02d", year, month, day)
+                guard !accountName.isEmpty, !rawDateStr.isEmpty else { continue }
+                
+                // A. Accounts
+                let accountId: String
+                if let id = accountMap[accountName] {
+                    accountId = id
                 } else {
-                    dateStr = "2000-01-01"
+                    let id = UUID().uuidString
+                    accountId = id
+                    accountMap[accountName] = id
+                    try destDB.execute("INSERT INTO accounts (id, name, offbudget, closed) VALUES (?, ?, 0, 0);",
+                                       arguments: [id, accountName])
+                    
+                    // Create transfer payee for this account
+                    let transferPayeeId = UUID().uuidString
+                    try destDB.execute("INSERT INTO payees (id, name, category_id, transfer_account_id) VALUES (?, ?, NULL, ?);",
+                                       arguments: [transferPayeeId, "Transfer: \(accountName)", id])
                 }
                 
-                let amount = t["amount"] as? Int ?? 0
-                let desc = t["description"] as? String ?? ""
+                // B. Category Groups & Categories
+                let finalGroupName = groupName.isEmpty ? "Flexible Spending" : groupName
+                let categoryKey = categoryName + "||" + finalGroupName
+                let isSelectedCategory = selectedCategories.contains(categoryKey)
                 
-                var payeeId: Any = NSNull()
-                var payeeName: Any = NSNull()
-                if !desc.isEmpty {
-                    if let name = payeeMap[desc] {
-                        payeeId = desc
-                        payeeName = name
+                var categoryId: Any = NSNull()
+                if isSelectedCategory && !categoryName.isEmpty {
+                    // Group
+                    let groupId: String
+                    if let id = groupMap[finalGroupName] {
+                        groupId = id
                     } else {
-                        payeeName = desc
+                        let id = UUID().uuidString
+                        groupId = id
+                        groupMap[finalGroupName] = id
+                        let isIncome = finalGroupName.localizedCaseInsensitiveCompare("income") == .orderedSame
+                        try destDB.execute("INSERT INTO budget_category_groups (id, name, is_income, hidden) VALUES (?, ?, ?, 0);",
+                                           arguments: [id, finalGroupName, isIncome ? 1 : 0])
+                    }
+                    
+                    // Category
+                    if let id = categoryMap[categoryKey] {
+                        categoryId = id
+                    } else {
+                        let id = UUID().uuidString
+                        categoryId = id
+                        categoryMap[categoryKey] = id
+                        let isIncome = finalGroupName.localizedCaseInsensitiveCompare("income") == .orderedSame
+                        let style = colorAndIcon(for: categoryName, isIncome: isIncome)
+                        try destDB.execute("INSERT INTO categories (id, name, is_income, hidden, group_id, color, icon) VALUES (?, ?, ?, 0, ?, ?, ?);",
+                                           arguments: [id, categoryName, isIncome ? 1 : 0, groupId, style.color, style.icon])
                     }
                 }
                 
-                let categoryId: Any = t["category"] as? String ?? NSNull()
-                let notes: Any = t["notes"] as? String ?? NSNull()
-                let importedId: Any = t["financial_id"] as? String ?? NSNull()
-                let transferId: Any = t["transferred_id"] as? String ?? NSNull()
-                let cleared = t["cleared"] as? Int ?? 0
-                
-                try destDB.execute("""
-                    INSERT INTO transactions (id, account_id, date, amount, payee_id, payee_name, category_id, notes, imported_id, transfer_id, cleared, source)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'imported');
-                """, arguments: [
-                    id, accountId, dateStr, amount, payeeId, payeeName, categoryId, notes, importedId, transferId, cleared
-                ])
-            }
-            
-            // F. Budget Values (zero_budgets)
-            let zeroBudgets = try srcDB.query("SELECT month, category, amount, carryover FROM zero_budgets;")
-            for zb in zeroBudgets {
-                let monthInt = zb["month"] as? Int ?? 0
-                let categoryId = zb["category"] as? String ?? ""
-                let amount = zb["amount"] as? Int ?? 0
-                let carryover = zb["carryover"] as? Int ?? 1
-                
-                guard !categoryId.isEmpty else { continue }
-                
-                // Convert YYYYMM to YYYY-MM
-                let monthStr: String
-                if monthInt > 0 {
-                    let year = monthInt / 100
-                    let month = monthInt % 100
-                    monthStr = String(format: "%04d-%02d", year, month)
-                } else {
-                    monthStr = "2000-01"
+                // C. Payees
+                var payeeId: Any = NSNull()
+                var payeeInsertName: Any = NSNull()
+                if !payeeName.isEmpty {
+                    if let id = payeeMap[payeeName] {
+                        payeeId = id
+                    } else {
+                        let id = UUID().uuidString
+                        payeeId = id
+                        payeeMap[payeeName] = id
+                        try destDB.execute("INSERT INTO payees (id, name, category_id, transfer_account_id) VALUES (?, ?, NULL, NULL);",
+                                           arguments: [id, payeeName])
+                    }
+                    payeeInsertName = payeeName
                 }
                 
+                // D. Amount Parsing
+                let doubleAmount = parseDouble(amountStr)
+                let amountCents = Int(round(doubleAmount * 100))
+                
+                // E. Date Parsing
+                let dateStr = parseDateString(rawDateStr)
+                
+                // F. Notes
+                let finalNotes: Any = noteStr.isEmpty ? NSNull() : noteStr
+                
+                // G. Insert Transaction
+                let txId = UUID().uuidString
                 try destDB.execute("""
-                    INSERT INTO budget_category_values (month, category_id, budgeted, carryover)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(month, category_id) DO UPDATE SET budgeted = excluded.budgeted, carryover = excluded.carryover;
-                """, arguments: [monthStr, categoryId, amount, carryover])
+                    INSERT INTO transactions (id, account_id, date, amount, payee_id, payee_name, category_id, notes, imported_id, transfer_id, cleared, source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, 'imported');
+                """, arguments: [
+                    txId, accountId, dateStr, amountCents, payeeId, payeeInsertName, categoryId, finalNotes, "csv_import_\(UUID().uuidString.prefix(8))"
+                ])
             }
         }
         
-        // 6. Set Active Budget in AppState
+        // Set Active Budget in AppState
         let repo = LocalBudgetRepository(db: destDB)
         DispatchQueue.main.async {
             appState.selectedBudgetDisplayName = displayName
@@ -212,9 +261,39 @@ public final class ActualBudgetImporter {
         }
     }
     
+    private static func parseDateString(_ str: String) -> String {
+        let cleaned = str.trimmingCharacters(in: .whitespacesAndNewlines)
+        let formats = [
+            "M/d/yy",
+            "MM/dd/yy",
+            "M/d/yyyy",
+            "MM/dd/yyyy",
+            "yyyy-MM-dd",
+            "yyyy/MM/dd"
+        ]
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        for format in formats {
+            f.dateFormat = format
+            if let d = f.date(from: cleaned) {
+                let outF = DateFormatter()
+                outF.dateFormat = "yyyy-MM-dd"
+                return outF.string(from: d)
+            }
+        }
+        return "2000-01-01"
+    }
+    
+    private static func parseDouble(_ val: String) -> Double {
+        let cleaned = val.replacingOccurrences(of: "$", with: "")
+                         .replacingOccurrences(of: ",", with: "")
+                         .trimmingCharacters(in: .whitespacesAndNewlines)
+        return Double(cleaned) ?? 0.0
+    }
+    
     private static func colorAndIcon(for name: String, isIncome: Bool) -> (color: String, icon: String) {
         if isIncome {
-            return ("#4ECCA3", "briefcase.fill") // green, briefcase
+            return ("#4ECCA3", "briefcase.fill")
         }
         
         let lower = name.lowercased()

@@ -9,7 +9,7 @@ struct OnboardingView: View {
     @State private var budgetName: String = ""
     @State private var selectedCurrency: String = "USD"
     @State private var errorMessage: String?
-    @State private var showingFileImporter = false
+    @State private var showingActualImportSheet = false
     
     // Categories state
     @State private var selectedCategories: [CategorySetup] = []
@@ -96,22 +96,8 @@ struct OnboardingView: View {
         )) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
-        .fileImporter(
-            isPresented: $showingFileImporter,
-            allowedContentTypes: [.item],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let selectedURL = urls.first else { return }
-                do {
-                    try ActualBudgetImporter.importBudget(from: selectedURL, to: appState)
-                } catch {
-                    errorMessage = "Import failed: \(error.localizedDescription)"
-                }
-            case .failure(let error):
-                errorMessage = "Failed to select file: \(error.localizedDescription)"
-            }
+        .sheet(isPresented: $showingActualImportSheet) {
+            ActualBudgetImportView()
         }
     }
     
@@ -190,7 +176,7 @@ struct OnboardingView: View {
             .padding(.vertical, 8)
             
             Button(action: {
-                showingFileImporter = true
+                showingActualImportSheet = true
             }) {
                 HStack {
                     Image(systemName: "arrow.down.doc.fill")

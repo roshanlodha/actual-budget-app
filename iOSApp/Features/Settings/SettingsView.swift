@@ -6,7 +6,7 @@ struct SettingsView: View {
     
     @State private var showingResetAlert = false
     @State private var showingImportConfirmation = false
-    @State private var showingFileImporter = false
+    @State private var showingActualImportSheet = false
     @State private var errorMessage: String? = nil
     
     var body: some View {
@@ -89,7 +89,7 @@ struct SettingsView: View {
         .alert("Import Budget", isPresented: $showingImportConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Import & Overwrite", role: .destructive) {
-                showingFileImporter = true
+                showingActualImportSheet = true
             }
         } message: {
             Text("This will overwrite your existing local budget data. Ensure you have backed up if necessary.")
@@ -100,22 +100,8 @@ struct SettingsView: View {
         )) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
-        .fileImporter(
-            isPresented: $showingFileImporter,
-            allowedContentTypes: [.item],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let selectedURL = urls.first else { return }
-                do {
-                    try ActualBudgetImporter.importBudget(from: selectedURL, to: appState)
-                } catch {
-                    errorMessage = "Import failed: \(error.localizedDescription)"
-                }
-            case .failure(let error):
-                errorMessage = "Failed to select file: \(error.localizedDescription)"
-            }
+        .sheet(isPresented: $showingActualImportSheet) {
+            ActualBudgetImportView()
         }
     }
 }

@@ -87,21 +87,7 @@ struct CSVImportView: View {
         }
     }
     
-    // Samples
-    private let bankSampleText = """
-Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
-DEBIT,5/21/26,Rent,-2244.66,MISC_DEBIT,50,
-"""
-    
-    private let creditCardSampleText = """
-Transaction Date,Post Date,Description,Category,Type,Amount,Memo
-5/25/26,5/27/26,United,Travel,Sale,-38.92,
-5/27/26,5/27/26,Woot,Shopping,Sale,-56.29,
-5/24/26,5/25/26,Amazon,Shopping,Sale,-29.48,
-5/25/26,5/25/26,Amazon,Shopping,Sale,-35.39,
-5/21/26,5/24/26,United,Travel,Sale,-5.6,
-5/23/26,5/24/26,Grocery Store,Groceries,Sale,-84.01,
-"""
+
     
     var body: some View {
         NavigationStack {
@@ -354,57 +340,7 @@ Transaction Date,Post Date,Description,Category,Type,Amount,Memo
                     )
             }
             
-            HStack {
-                Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
-                Text("OR").font(AppTheme.Fonts.footnote).foregroundColor(.secondary)
-                Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
-            }
-            
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Try Sample Data (Demo)")
-                    .font(AppTheme.Fonts.headline)
-                    .foregroundColor(.primary)
-                
-                HStack(spacing: 12) {
-                    Button {
-                        csvText = bankSampleText
-                        importedFileName = "bank_ex.CSV"
-                        parseCSV()
-                        autoMapColumns()
-                        withAnimation { step = 2 }
-                    } label: {
-                        HStack {
-                            Image(systemName: "building.2.fill")
-                            Text("Bank Sample")
-                        }
-                        .font(AppTheme.Fonts.body)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
-                        .background(Color.white.opacity(0.08))
-                        .cornerRadius(8)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        csvText = creditCardSampleText
-                        importedFileName = "creditcard_ex.CSV"
-                        parseCSV()
-                        autoMapColumns()
-                        withAnimation { step = 2 }
-                    } label: {
-                        HStack {
-                            Image(systemName: "creditcard.fill")
-                            Text("Credit Card Sample")
-                        }
-                        .font(AppTheme.Fonts.body)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
-                        .background(Color.white.opacity(0.08))
-                        .cornerRadius(8)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+
         }
     }
     
