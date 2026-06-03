@@ -30,8 +30,23 @@ public final class ActualBudgetImporter {
             }
         }
         
+        // Copy database to temporary location to bypass sandbox limitations on low-level sqlite C-library
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("sqlite")
+        do {
+            if FileManager.default.fileExists(atPath: tempURL.path) {
+                try? FileManager.default.removeItem(at: tempURL)
+            }
+            try FileManager.default.copyItem(at: actualSqliteURL, to: tempURL)
+        } catch {
+            throw NSError(domain: "ActualBudgetImporter", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to copy database to temporary location: \(error.localizedDescription)"])
+        }
+        
+        defer {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+        
         // 3. Initialize Source SQLite Database
-        let srcDB = try SQLiteDB(path: actualSqliteURL.path)
+        let srcDB = try SQLiteDB(path: tempURL.path)
         
         // Quick verification: check if transactions table exists
         let tablesCheck = try srcDB.query("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions';")

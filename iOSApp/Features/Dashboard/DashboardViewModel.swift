@@ -43,6 +43,8 @@ public final class DashboardViewModel: ObservableObject {
     // YTD Stats
     @Published public var ytdExpenseTotal: Int = 0
     @Published public var ytdIncomeTotal: Int = 0
+    @Published public var monthlyExpenseAverage: Int = 0
+    @Published public var monthlyIncomeAverage: Int = 0
     @Published public var dateRangeLabel: String = ""
     @Published public var cashFlowNet: Int = 0
     
@@ -67,8 +69,17 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var showDetailSheet = false
     
     private var repository: BudgetRepository?
+    private var cancellables = Set<AnyCancellable>()
     
-    public init() {}
+    public init() {
+        NotificationCenter.default.publisher(for: NSNotification.Name("IgnoredCategoriesChanged"))
+            .sink { [weak self] _ in
+                Task {
+                    await self?.loadData()
+                }
+            }
+            .store(in: &cancellables)
+    }
     
     public func configure(repository: BudgetRepository) {
         self.repository = repository
@@ -134,8 +145,12 @@ public final class DashboardViewModel: ObservableObject {
             // Filter transactions for calculations:
             // 1. Must be on-budget account
             // 2. Must not be a transfer
+            // 3. Category must not be ignored
+            let ignoredCategoryIDs = Set(UserDefaults.standard.stringArray(forKey: "IgnoredCategoryIDs") ?? [])
             let filteredTransactions = allTransactions.filter { tx in
-                onBudgetAccountIds.contains(tx.account) && !isTransfer(tx)
+                onBudgetAccountIds.contains(tx.account) &&
+                !isTransfer(tx) &&
+                !(tx.category.map { ignoredCategoryIDs.contains($0) } ?? false)
             }
             
             // Date formatting strings
@@ -155,9 +170,10 @@ public final class DashboardViewModel: ObservableObject {
                 if isIncomeTransaction(tx) {
                     incomeSum += amt
                 } else {
-                    expenseSum += abs(amt)
+                    expenseSum += amt
                 }
             }
+            expenseSum = abs(expenseSum)
             
             // Format YTD Range label
             let rangeFormatter = DateFormatter()
@@ -180,7 +196,7 @@ public final class DashboardViewModel: ObservableObject {
                 for tx in monthTxs {
                     if !isIncomeTransaction(tx) {
                         let catName = mappedCategoriesById[tx.category ?? ""]?.name ?? "Uncategorized"
-                        categoryTotals[catName, default: 0] += abs(tx.amount ?? 0)
+                        categoryTotals[catName, default: 0] += tx.amount ?? 0
                     }
                 }
                 
@@ -197,7 +213,7 @@ public final class DashboardViewModel: ObservableObject {
                             monthLabel: shortMonthNames[monthIdx - 1],
                             monthIndex: monthIdx,
                             category: catName,
-                            amount: Double(total) / 100.0
+                            amount: total < 0 ? Double(abs(total)) / 100.0 : 0.0
                         ))
                     }
                 }
@@ -211,17 +227,18 @@ public final class DashboardViewModel: ObservableObject {
             for tx in currentMonthTxs {
                 if !isIncomeTransaction(tx) {
                     let catName = mappedCategoriesById[tx.category ?? ""]?.name ?? "Uncategorized"
-                    currentMonthCategoryTotals[catName, default: 0] += abs(tx.amount ?? 0)
+                    currentMonthCategoryTotals[catName, default: 0] += tx.amount ?? 0
                 }
             }
             
             let sortedBreakdown = currentMonthCategoryTotals
-                .map { CategoryExpense(category: $0.key, amount: Double($0.value) / 100.0) }
+                .map { CategoryExpense(category: $0.key, amount: $0.value < 0 ? Double(abs($0.value)) / 100.0 : 0.0) }
+                .filter { $0.amount > 0 }
                 .sorted { $0.amount > $1.amount }
             
-            // Calendar calculations (3 most recent calendar months)
+            // Calendar calculations (current month only)
             var generatedMonths: [CalendarMonthData] = []
-            for offset in -2...0 {
+            for offset in 0...0 {
                 guard let monthDate = calendar.date(byAdding: .month, value: offset, to: now) else { continue }
                 
                 let comps = calendar.dateComponents([.year, .month], from: monthDate)
@@ -267,20 +284,23 @@ public final class DashboardViewModel: ObservableObject {
                         if isIncomeTransaction(tx) {
                             dayIncome += amt
                         } else {
-                            dayExpense += abs(amt)
+                            dayExpense += amt
                         }
                     }
                     
-                    totalMonthIncome += dayIncome
-                    totalMonthExpense += dayExpense
+                    let finalDayExpense = dayExpense < 0 ? abs(dayExpense) : 0
+                    let finalDayIncome = dayIncome + (dayExpense > 0 ? dayExpense : 0)
+                    
+                    totalMonthIncome += finalDayIncome
+                    totalMonthExpense += finalDayExpense
                     
                     days.append(CalendarDayData(
                         date: dayDate,
                         dateString: dateStr,
                         dayNumber: dayNum,
                         isPadding: false,
-                        income: dayIncome,
-                        expense: dayExpense,
+                        income: finalDayIncome,
+                        expense: finalDayExpense,
                         transactions: dayTxs
                     ))
                 }
@@ -314,12 +334,15 @@ public final class DashboardViewModel: ObservableObject {
             }
             
             // Update UI state
+            let elapsedMonths = max(1, currentMonthInt)
             self.accounts = fetchedAccounts
             self.categoriesById = mappedCategoriesById
             self.payeesById = mappedPayeesById
             
             self.ytdExpenseTotal = expenseSum
             self.ytdIncomeTotal = incomeSum
+            self.monthlyExpenseAverage = expenseSum / elapsedMonths
+            self.monthlyIncomeAverage = incomeSum / elapsedMonths
             self.dateRangeLabel = dynamicRangeLabel
             self.cashFlowNet = incomeSum - expenseSum
             

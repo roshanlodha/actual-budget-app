@@ -153,7 +153,7 @@ struct BudgetView: View {
                 
                 let spent = abs(category.spent ?? 0)
                 let budgeted = category.budgeted ?? 0
-                let progress = budgeted > 0 ? min(Double(spent) / Double(budgeted), 1.0) : 0.0
+                let progress = budgeted > 0 ? min(Double(spent) / Double(budgeted), 1.0) : (spent > 0 ? 1.0 : 0.0)
                 
                 ProgressView(value: progress)
                     .tint(progress > 0.85 ? AppTheme.destructive : AppTheme.accent)

@@ -24,7 +24,7 @@ struct DashboardView: View {
                             ProgressView()
                                 .padding(.top, 4)
                         } else {
-                            Text(formatMoney(viewModel.ytdExpenseTotal))
+                            Text(formatMoney(viewModel.monthlyExpenseAverage))
                                 .font(.system(.largeTitle, design: .monospaced))
                                 .foregroundColor(Color(red: 0.85, green: 0.35, blue: 0.19))
                                 .minimumScaleFactor(0.5)
@@ -51,7 +51,7 @@ struct DashboardView: View {
                             ProgressView()
                                 .padding(.top, 4)
                         } else {
-                            Text(formatMoney(viewModel.ytdIncomeTotal))
+                            Text(formatMoney(viewModel.monthlyIncomeAverage))
                                 .font(.system(.largeTitle, design: .monospaced))
                                 .foregroundColor(.green)
                                 .minimumScaleFactor(0.5)
@@ -146,6 +146,10 @@ struct DashboardView: View {
                             .frame(height: 80)
                     } else {
                         VStack(spacing: 8) {
+                            let maxTotal = max(viewModel.ytdExpenseTotal, viewModel.ytdIncomeTotal)
+                            let expenseRatio = maxTotal > 0 ? Double(viewModel.ytdExpenseTotal) / Double(maxTotal) : 0.0
+                            let incomeRatio = maxTotal > 0 ? Double(viewModel.ytdIncomeTotal) / Double(maxTotal) : 0.0
+                            
                             // Expenses bar
                             VStack(spacing: 4) {
                                 HStack {
@@ -160,15 +164,12 @@ struct DashboardView: View {
                                 GeometryReader { geo in
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(Color(red: 0.85, green: 0.35, blue: 0.19))
-                                        .frame(width: geo.size.width, height: 8)
+                                        .frame(width: geo.size.width * CGFloat(expenseRatio), height: 8)
                                 }
                                 .frame(height: 8)
                             }
                             
                             // Income bar
-                            let incomeRatio = viewModel.ytdExpenseTotal > 0 ? Double(viewModel.ytdIncomeTotal) / Double(viewModel.ytdExpenseTotal) : (viewModel.ytdIncomeTotal > 0 ? 1.0 : 0.0)
-                            let boundedRatio = min(1.0, incomeRatio)
-                            
                             VStack(spacing: 4) {
                                 HStack {
                                     Text("Income")
@@ -182,7 +183,7 @@ struct DashboardView: View {
                                 GeometryReader { geo in
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(Color.green)
-                                        .frame(width: geo.size.width * CGFloat(boundedRatio), height: 8)
+                                        .frame(width: geo.size.width * CGFloat(incomeRatio), height: 8)
                                 }
                                 .frame(height: 8)
                             }

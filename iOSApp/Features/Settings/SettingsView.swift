@@ -48,6 +48,11 @@ struct SettingsView: View {
                     } label: {
                         Label("Manage Categories", systemImage: "tag.fill")
                     }
+                    NavigationLink {
+                        IgnoredCategoriesView()
+                    } label: {
+                        Label("Ignored Dashboard Categories", systemImage: "eye.slash.fill")
+                    }
                 }
                 .listRowBackground(Color.primary.opacity(0.05))
                 
