@@ -409,23 +409,7 @@ public final class LocalBudgetRepository: BudgetRepository {
             GROUP BY category_id;
         """, arguments: [month])
         let spentByCat = Dictionary(uniqueKeysWithValues: spentRows.map { ($0["category_id"] as? String ?? "", $0["spent"] as? Int ?? 0) })
-        
-        let cumulativeSpentRows = try db.query("""
-            SELECT category_id, SUM(amount) as spent 
-            FROM transactions t
-            JOIN accounts a ON t.account_id = a.id
-            WHERE strftime('%Y-%m', date) <= ? AND t.transfer_id IS NULL AND a.offbudget = 0
-            GROUP BY category_id;
-        """, arguments: [month])
-        let cumulativeSpentByCat = Dictionary(uniqueKeysWithValues: cumulativeSpentRows.map { ($0["category_id"] as? String ?? "", $0["spent"] as? Int ?? 0) })
-        
-        let cumulativeBudgetedRows = try db.query("""
-            SELECT category_id, SUM(budgeted) as budgeted 
-            FROM budget_category_values 
-            WHERE month <= ?
-            GROUP BY category_id;
-        """, arguments: [month])
-        let cumulativeBudgetedByCat = Dictionary(uniqueKeysWithValues: cumulativeBudgetedRows.map { ($0["category_id"] as? String ?? "", $0["budgeted"] as? Int ?? 0) })
+
         
         var groups = [BudgetMonthCategoryGroup]()
         
@@ -446,9 +430,7 @@ public final class LocalBudgetRepository: BudgetRepository {
                 let budgeted = budgetsByCat[cId]?.0 ?? 0
                 let spent = spentByCat[cId] ?? 0
                 
-                let cumBudgeted = cumulativeBudgetedByCat[cId] ?? 0
-                let cumSpent = cumulativeSpentByCat[cId] ?? 0
-                let balance = cumBudgeted + cumSpent
+                let balance = budgeted + spent
                 
                 return BudgetMonthCategory(
                     id: cId,

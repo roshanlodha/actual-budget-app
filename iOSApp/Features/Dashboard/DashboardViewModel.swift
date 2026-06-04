@@ -373,15 +373,32 @@ public final class DashboardViewModel: ObservableObject {
             }
             
             // Update UI state
-            let elapsedMonths = max(1, currentMonthInt)
             self.accounts = fetchedAccounts
             self.categoriesById = mappedCategoriesById
             self.payeesById = mappedPayeesById
             
-            self.ytdExpenseTotal = expenseSum
+            self.ytdExpenseTotal = Int(sortedYtdBreakdown.map { $0.amount }.reduce(0, +) * 100)
             self.ytdIncomeTotal = incomeSum
-            self.monthlyExpenseAverage = expenseSum / elapsedMonths
-            self.monthlyIncomeAverage = incomeSum / elapsedMonths
+            
+            let completeMonthsCount = currentMonthInt - 1
+            if completeMonthsCount > 0 {
+                let completeExpenses = monthlyBreakdown
+                    .filter { $0.monthIndex < currentMonthInt }
+                    .map { $0.amount }
+                    .reduce(0, +)
+                self.monthlyExpenseAverage = Int(completeExpenses * 100) / completeMonthsCount
+                
+                let completeMonthPrefixes = (1...completeMonthsCount).map { String(format: "%04d-%02d", currentYear, $0) }
+                let completeIncomeSum = ytdTransactions
+                    .filter { tx in isIncomeTransaction(tx) && completeMonthPrefixes.contains(where: { tx.date.hasPrefix($0) }) }
+                    .map { $0.amount ?? 0 }
+                    .reduce(0, +)
+                self.monthlyIncomeAverage = completeIncomeSum / completeMonthsCount
+            } else {
+                self.monthlyExpenseAverage = 0
+                self.monthlyIncomeAverage = 0
+            }
+            
             self.dateRangeLabel = dynamicRangeLabel
             self.cashFlowNet = incomeSum - expenseSum
             
