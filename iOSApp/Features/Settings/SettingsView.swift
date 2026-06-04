@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    @AppStorage("hideYtdMonthlyExpenses") private var hideYtdMonthlyExpenses: Bool = true
     
     @State private var showingResetAlert = false
     @State private var showingImportConfirmation = false
@@ -24,18 +25,6 @@ struct SettingsView: View {
                             
                             GlassCard(cornerRadius: 15) {
                                 VStack(spacing: 14) {
-                                    HStack {
-                                        Text("ID")
-                                            .font(AppTheme.Fonts.body)
-                                        Spacer()
-                                        Text(appState.selectedBudgetID ?? "Unknown")
-                                            .font(.caption.monospaced())
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                    
-                                    Divider()
-                                    
                                     Button {
                                         showingImportConfirmation = true
                                     } label: {
@@ -44,20 +33,9 @@ struct SettingsView: View {
                                                 .font(AppTheme.Fonts.body)
                                                 .foregroundColor(AppTheme.accent)
                                             Spacer()
-                                        }
-                                    }
-                                    .buttonStyle(.plain)
-                                    
-                                    Divider()
-                                    
-                                    Button {
-                                        showingResetAlert = true
-                                    } label: {
-                                        HStack {
-                                            Label("Reset App & Delete Data", systemImage: "trash.fill")
-                                                .font(AppTheme.Fonts.body)
-                                                .foregroundColor(AppTheme.destructive)
-                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.footnote)
+                                                .foregroundColor(.secondary)
                                         }
                                     }
                                     .buttonStyle(.plain)
@@ -107,7 +85,22 @@ struct SettingsView: View {
                             }
                         }
                         
-
+                        // Section 3: Preferences
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Dashboard Preferences")
+                                .font(AppTheme.Fonts.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal)
+                            
+                            GlassCard(cornerRadius: 15) {
+                                Toggle(isOn: $hideYtdMonthlyExpenses) {
+                                    Label("Hide YTD Monthly Expenses", systemImage: "chart.bar.fill")
+                                        .font(AppTheme.Fonts.body)
+                                }
+                                .tint(AppTheme.accent)
+                            }
+                        }
+                        
                         // Section 4: Logs
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Logs")
@@ -126,6 +119,28 @@ struct SettingsView: View {
                                         Image(systemName: "chevron.right")
                                             .font(.footnote)
                                             .foregroundColor(.secondary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        
+                        // Section 5: Danger Zone
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Danger Zone")
+                                .font(AppTheme.Fonts.subheadline)
+                                .foregroundColor(AppTheme.destructive)
+                                .padding(.horizontal)
+                            
+                            GlassCard(cornerRadius: 15) {
+                                Button {
+                                    showingResetAlert = true
+                                } label: {
+                                    HStack {
+                                        Label("Reset App & Delete Data", systemImage: "trash.fill")
+                                            .font(AppTheme.Fonts.body)
+                                            .foregroundColor(AppTheme.destructive)
+                                        Spacer()
                                     }
                                 }
                                 .buttonStyle(.plain)

@@ -10,12 +10,12 @@ struct CategoryManagerView: View {
     @State private var editingCategory: Category?
     @State private var isAddingToGroup: CategoryGroup?
     @State private var categoryName: String = ""
-    @State private var categoryColor: String = "#FF9233"
+    @State private var categoryColor: String = "#6366F1"
     @State private var categoryIcon: String = "tag.fill"
     
     private let colors = [
-        "#FF6B6B", "#FF9233", "#FFC93C", "#4ECCA3", "#00ADB5",
-        "#39A2DB", "#5A20CB", "#A66CFF", "#FF8AAE", "#8D93AB"
+        "#6366F1", "#F59E0B", "#10B981", "#EC4899", "#3B82F6",
+        "#06B6D4", "#F43F5E", "#8B5CF6", "#14B8A6", "#F97316"
     ]
     
     private let icons = [
@@ -82,7 +82,7 @@ struct CategoryManagerView: View {
                                                             Image(systemName: cat.icon ?? "tag.fill")
                                                                 .foregroundColor(.white)
                                                                 .frame(width: 28, height: 28)
-                                                                .background(Color(hex: cat.color ?? "#8D93AB"))
+                                                                .background(Color(hex: cat.color ?? "#6366F1"))
                                                                 .clipShape(Circle())
                                                             
                                                             Text(cat.name)

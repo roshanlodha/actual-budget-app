@@ -163,6 +163,14 @@ public final class ActualBudgetImporter {
                 
                 guard !accountName.isEmpty, !rawDateStr.isEmpty else { continue }
                 
+                let finalGroupName = groupName.isEmpty ? "Flexible Spending" : groupName
+                let categoryKey = categoryName + "||" + finalGroupName
+                let isSelectedCategory = selectedCategories.contains(categoryKey)
+                
+                if !categoryName.isEmpty && !isSelectedCategory {
+                    continue
+                }
+                
                 // A. Accounts
                 let accountId: String
                 if let id = accountMap[accountName] {
@@ -181,10 +189,6 @@ public final class ActualBudgetImporter {
                 }
                 
                 // B. Category Groups & Categories
-                let finalGroupName = groupName.isEmpty ? "Flexible Spending" : groupName
-                let categoryKey = categoryName + "||" + finalGroupName
-                let isSelectedCategory = selectedCategories.contains(categoryKey)
-                
                 var categoryId: Any = NSNull()
                 if isSelectedCategory && !categoryName.isEmpty {
                     // Group

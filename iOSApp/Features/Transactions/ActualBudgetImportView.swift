@@ -278,7 +278,7 @@ struct ActualBudgetImportView: View {
                 .foregroundColor(AppTheme.accent)
             }
             
-            Text("Uncheck categories you do not want to import. Transactions belonging to unchecked categories will be imported uncategorized.")
+            Text("Uncheck categories you do not want to import. Transactions belonging to unchecked categories will be skipped and not imported.")
                 .font(AppTheme.Fonts.body)
                 .foregroundColor(.secondary)
             

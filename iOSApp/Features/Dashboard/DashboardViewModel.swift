@@ -55,6 +55,9 @@ public final class DashboardViewModel: ObservableObject {
     // Current month breakdown
     @Published public var currentMonthCategoryBreakdown: [CategoryExpense] = []
     
+    // YTD category breakdown
+    @Published public var ytdCategoryBreakdown: [CategoryExpense] = []
+    
     // Calendar Data
     @Published public var calendarMonthOffset: Int = 0
     @Published public var calendarMonths: [CalendarMonthData] = []
@@ -100,7 +103,6 @@ public final class DashboardViewModel: ObservableObject {
             let onBudgetAccountIds = Set(fetchedAccounts.filter { !$0.offbudget }.map { $0.id })
             let mappedCategoriesById = Dictionary(uniqueKeysWithValues: fetchedCategories.map { ($0.id, $0) })
             let mappedPayeesById = Dictionary(uniqueKeysWithValues: fetchedPayees.map { ($0.id, $0) })
-            let incomeCategoryIds = Set(fetchedCategories.filter { $0.is_income == true }.map { $0.id })
             
             // Generate category colors map
             let palette: [Color] = [
@@ -260,6 +262,19 @@ public final class DashboardViewModel: ObservableObject {
                 .filter { $0.amount > 0 }
                 .sorted { $0.amount > $1.amount }
             
+            // YTD category breakdown calculations (all YTD expenses summed by category)
+            var ytdCategoryTotals: [String: Int] = [:]
+            for tx in ytdTransactions {
+                if !isIncomeTransaction(tx) {
+                    let catName = mappedCategoriesById[tx.category ?? ""]?.name ?? "Uncategorized"
+                    ytdCategoryTotals[catName, default: 0] += tx.amount ?? 0
+                }
+            }
+            let sortedYtdBreakdown = ytdCategoryTotals
+                .map { CategoryExpense(category: $0.key, amount: $0.value < 0 ? Double(abs($0.value)) / 100.0 : 0.0) }
+                .filter { $0.amount > 0 }
+                .sorted { $0.amount > $1.amount }
+            
             // Calendar calculations (navigated month only)
             var generatedMonths: [CalendarMonthData] = []
             for offset in calendarMonthOffset...calendarMonthOffset {
@@ -373,6 +388,7 @@ public final class DashboardViewModel: ObservableObject {
             self.categoryColorMap = tempColorMap
             self.perMonthExpenseBreakdown = monthlyBreakdown
             self.currentMonthCategoryBreakdown = sortedBreakdown
+            self.ytdCategoryBreakdown = sortedYtdBreakdown
             self.calendarMonths = generatedMonths
             
         } catch {

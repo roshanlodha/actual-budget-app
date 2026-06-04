@@ -4,9 +4,10 @@ import Charts
 struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = DashboardViewModel()
+    @AppStorage("hideYtdMonthlyExpenses") private var hideYtdMonthlyExpenses: Bool = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var selectedAngle: Double? = nil
     @State private var selectedCategoryName: String? = nil
+    @State private var selectedYtdCategoryName: String? = nil
 
     var body: some View {
         ZStack {
@@ -15,54 +16,7 @@ struct DashboardView: View {
             ScrollView {
                 AdaptiveGlassContainer(spacing: 20) {
                     VStack(spacing: 20) {
-                        // Month Selector Header at top of Dashboard content
-                        HStack {
-                            Button(action: {
-                                viewModel.calendarMonthOffset -= 1
-                                Task {
-                                    await viewModel.loadData()
-                                }
-                            }) {
-                                Image(systemName: "chevron.left")
-                                    .font(.title3.bold())
-                                    .foregroundColor(AppTheme.accent)
-                                    .padding(10)
-                                    .background(Circle().fill(Color.primary.opacity(0.06)))
-                            }
-                            .buttonStyle(.plain)
-                            
-                            Spacer()
-                            
-                            if let activeMonth = viewModel.calendarMonths.first {
-                                Text(activeMonth.monthName)
-                                    .font(AppTheme.Fonts.title)
-                                    .foregroundColor(.primary)
-                            } else {
-                                Text("Select Month")
-                                    .font(AppTheme.Fonts.title)
-                                    .foregroundColor(.primary)
-                            }
-                            
-                            Spacer()
-                            
-                            Button(action: {
-                                viewModel.calendarMonthOffset += 1
-                                Task {
-                                    await viewModel.loadData()
-                                }
-                            }) {
-                                Image(systemName: "chevron.right")
-                                    .font(.title3.bold())
-                                    .foregroundColor(AppTheme.accent)
-                                    .padding(10)
-                                    .background(Circle().fill(Color.primary.opacity(0.06)))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-
-                        // Section 1: Summary Stat Cards
+                        // Section 1: Summary Stat Cards (YTD)
                         HStack(spacing: 16) {
                             // Card A: Average Expenses
                             GlassCard {
@@ -121,6 +75,204 @@ struct DashboardView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal)
                         
+                        // New Widget: YTD Monthly Expenses Stacked Bar Chart
+                        if !hideYtdMonthlyExpenses {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text("YTD Monthly Expenses")
+                                        .font(AppTheme.Fonts.headline)
+                                    
+                                    if viewModel.isLoading {
+                                        HStack {
+                                            Spacer()
+                                            ProgressView()
+                                            Spacer()
+                                        }
+                                        .frame(height: 200)
+                                    } else if viewModel.perMonthExpenseBreakdown.isEmpty {
+                                        emptyStateView(title: "No YTD Data", systemImage: "chart.bar", description: "No expenses recorded this year.")
+                                            .frame(height: 200)
+                                    } else {
+                                        Chart(viewModel.perMonthExpenseBreakdown) { item in
+                                            BarMark(
+                                                x: .value("Month", item.monthLabel),
+                                                y: .value("Amount", item.amount)
+                                            )
+                                            .foregroundStyle(by: .value("Category", item.category))
+                                        }
+                                        .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
+                                        .chartLegend(.hidden)
+                                        .frame(height: 200)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        
+                        // New Widget: Expenses by Category Large Pie Chart
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Expenses by Category")
+                                    .font(AppTheme.Fonts.headline)
+                                
+                                if viewModel.isLoading {
+                                    HStack {
+                                        Spacer()
+                                        ProgressView()
+                                        Spacer()
+                                    }
+                                    .frame(height: 220)
+                                } else if viewModel.ytdCategoryBreakdown.isEmpty {
+                                    emptyStateView(title: "No YTD Data", systemImage: "chart.pie", description: "No expenses recorded this year.")
+                                        .frame(height: 220)
+                                } else {
+                                    ZStack {
+                                        Chart(viewModel.ytdCategoryBreakdown) { item in
+                                            SectorMark(
+                                                angle: .value("Amount", item.amount),
+                                                angularInset: 1.0
+                                            )
+                                            .foregroundStyle(by: .value("Category", item.category))
+                                            .opacity(selectedYtdCategoryName == nil || selectedYtdCategoryName == item.category ? 1.0 : 0.35)
+                                            .accessibilityLabel("\(item.category) \(formatMoney(Int(item.amount * 100)))")
+                                        }
+                                        .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
+                                        .chartLegend(.hidden)
+                                        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: viewModel.ytdCategoryBreakdown)
+                                        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: selectedYtdCategoryName)
+                                        .frame(height: 220)
+                                        .overlay {
+                                            GeometryReader { geometry in
+                                                Color.clear
+                                                    .contentShape(Rectangle())
+                                                    .onTapGesture { location in
+                                                        let width = geometry.size.width
+                                                        let height = geometry.size.height
+                                                        let center = CGPoint(x: width / 2, y: height / 2)
+                                                        let dx = location.x - center.x
+                                                        let dy = location.y - center.y
+                                                        
+                                                        var radians = atan2(dx, -dy)
+                                                        if radians < 0 {
+                                                            radians += 2 * .pi
+                                                        }
+                                                        
+                                                        let totalAmount = viewModel.ytdCategoryBreakdown.map { $0.amount }.reduce(0.0, +)
+                                                        guard totalAmount > 0 else { return }
+                                                        
+                                                        let percentage = radians / (2 * .pi)
+                                                        let selectedValue = percentage * totalAmount
+                                                        
+                                                        var cumulativeSum = 0.0
+                                                        for item in viewModel.ytdCategoryBreakdown {
+                                                            cumulativeSum += item.amount
+                                                            if selectedValue <= cumulativeSum {
+                                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                                    if selectedYtdCategoryName == item.category {
+                                                                        selectedYtdCategoryName = nil
+                                                                    } else {
+                                                                        selectedYtdCategoryName = item.category
+                                                                    }
+                                                                }
+                                                                break
+                                                            }
+                                                        }
+                                                    }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // YTD detail footer inside card
+                                    HStack {
+                                        if let selectedYtdCategoryName,
+                                           let categoryExpense = viewModel.ytdCategoryBreakdown.first(where: { $0.category == selectedYtdCategoryName }) {
+                                            let total = viewModel.ytdCategoryBreakdown.map { $0.amount }.reduce(0, +)
+                                            let pct = total > 0 ? (categoryExpense.amount / total) * 100.0 : 0.0
+                                            
+                                            HStack(spacing: 8) {
+                                                Circle()
+                                                    .fill(viewModel.categoryColorMap[selectedYtdCategoryName] ?? .primary)
+                                                    .frame(width: 8, height: 8)
+                                                Text(selectedYtdCategoryName)
+                                                    .font(AppTheme.Fonts.body)
+                                                    .bold()
+                                                Spacer()
+                                                Text(formatMoney(Int(categoryExpense.amount * 100)))
+                                                    .font(AppTheme.Fonts.body.monospacedDigit())
+                                                    .bold()
+                                                Text(String(format: "(%.1f%%)", pct))
+                                                    .font(AppTheme.Fonts.caption.monospacedDigit())
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        } else {
+                                            let total = Int(viewModel.ytdCategoryBreakdown.map { $0.amount }.reduce(0, +) * 100)
+                                            HStack {
+                                                Text("Total YTD Expenses")
+                                                    .font(AppTheme.Fonts.subheadline)
+                                                    .foregroundColor(.secondary)
+                                                Spacer()
+                                                Text(formatMoney(total))
+                                                    .font(AppTheme.Fonts.body.monospacedDigit())
+                                                    .bold()
+                                            }
+                                        }
+                                    }
+                                    .padding(.top, 8)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        Divider()
+                            .padding(.horizontal)
+                        
+                        // Month Selector Header
+                        HStack {
+                            Button(action: {
+                                viewModel.calendarMonthOffset -= 1
+                                Task {
+                                    await viewModel.loadData()
+                                }
+                            }) {
+                                Image(systemName: "chevron.left")
+                                    .font(.title3.bold())
+                                    .foregroundColor(AppTheme.accent)
+                                    .padding(10)
+                                    .background(Circle().fill(Color.primary.opacity(0.06)))
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Spacer()
+                            
+                            if let activeMonth = viewModel.calendarMonths.first {
+                                Text(activeMonth.monthName)
+                                    .font(AppTheme.Fonts.title)
+                                    .foregroundColor(.primary)
+                            } else {
+                                Text("Select Month")
+                                    .font(AppTheme.Fonts.title)
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                viewModel.calendarMonthOffset += 1
+                                Task {
+                                    await viewModel.loadData()
+                                }
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .font(.title3.bold())
+                                    .foregroundColor(AppTheme.accent)
+                                    .padding(10)
+                                    .background(Circle().fill(Color.primary.opacity(0.06)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        
                         // Section 2: Month Expenses Mini Chart (Pie/Donut)
                         GlassCard {
                             VStack(alignment: .leading, spacing: 16) {
@@ -143,7 +295,7 @@ struct DashboardView: View {
                                             SectorMark(
                                                 angle: .value("Amount", item.amount),
                                                 innerRadius: .ratio(0.65),
-                                                outerRadius: selectedCategoryName == item.category ? .ratio(1.0) : .ratio(0.9),
+                                                outerRadius: .ratio(0.9),
                                                 angularInset: 1.5
                                             )
                                             .foregroundStyle(by: .value("Category", item.category))
@@ -151,11 +303,60 @@ struct DashboardView: View {
                                             .accessibilityLabel("\(item.category) \(formatMoney(Int(item.amount * 100)))")
                                         }
                                         .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
-                                        .chartAngleSelection(value: $selectedAngle)
                                         .chartLegend(.hidden)
                                         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: viewModel.currentMonthCategoryBreakdown)
                                         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: selectedCategoryName)
                                         .frame(height: 180)
+                                        .overlay {
+                                            GeometryReader { geometry in
+                                                Color.clear
+                                                    .contentShape(Rectangle())
+                                                    .onTapGesture { location in
+                                                        let width = geometry.size.width
+                                                        let height = geometry.size.height
+                                                        let center = CGPoint(x: width / 2, y: height / 2)
+                                                        let dx = location.x - center.x
+                                                        let dy = location.y - center.y
+                                                        
+                                                        let distance = sqrt(dx*dx + dy*dy)
+                                                        let maxRadius = min(width, height) / 2
+                                                        let innerRadiusLimit = maxRadius * 0.60
+                                                        
+                                                        if distance < innerRadiusLimit {
+                                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                                selectedCategoryName = nil
+                                                            }
+                                                            return
+                                                        }
+                                                        
+                                                        var radians = atan2(dx, -dy)
+                                                        if radians < 0 {
+                                                            radians += 2 * .pi
+                                                        }
+                                                        
+                                                        let totalAmount = viewModel.currentMonthCategoryBreakdown.map { $0.amount }.reduce(0.0, +)
+                                                        guard totalAmount > 0 else { return }
+                                                        
+                                                        let percentage = radians / (2 * .pi)
+                                                        let selectedValue = percentage * totalAmount
+                                                        
+                                                        var cumulativeSum = 0.0
+                                                        for item in viewModel.currentMonthCategoryBreakdown {
+                                                            cumulativeSum += item.amount
+                                                            if selectedValue <= cumulativeSum {
+                                                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                                    if selectedCategoryName == item.category {
+                                                                        selectedCategoryName = nil
+                                                                    } else {
+                                                                        selectedCategoryName = item.category
+                                                                    }
+                                                                }
+                                                                break
+                                                            }
+                                                        }
+                                                    }
+                                            }
+                                        }
                                         
                                         // Dynamic central text and glass indicator
                                         VStack(spacing: 2) {
@@ -198,21 +399,6 @@ struct DashboardView: View {
                                         .onTapGesture {
                                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                                 selectedCategoryName = nil
-                                                selectedAngle = nil
-                                            }
-                                        }
-                                    }
-                                    .onChange(of: selectedAngle) { newValue in
-                                        if let newValue {
-                                            var cumulativeSum = 0.0
-                                            for item in viewModel.currentMonthCategoryBreakdown {
-                                                cumulativeSum += item.amount
-                                                if newValue <= cumulativeSum {
-                                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                                                        selectedCategoryName = item.category
-                                                    }
-                                                    return
-                                                }
                                             }
                                         }
                                     }
@@ -220,6 +406,7 @@ struct DashboardView: View {
                             }
                         }
                         .padding(.horizontal)
+
                         
                         // Section 3: Transaction Calendar
                         VStack(alignment: .leading, spacing: 12) {
@@ -325,7 +512,7 @@ struct DashboardView: View {
                 await viewModel.loadData()
             }
         }
-        .onChange(of: appState.selectedBudgetID) { _ in
+        .onChange(of: appState.selectedBudgetID) {
             Task {
                 if let repo = appState.repository {
                     viewModel.configure(repository: repo)
