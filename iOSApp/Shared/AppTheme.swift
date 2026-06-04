@@ -49,6 +49,15 @@ extension View {
         self.scrollEdgeEffectStyle(.soft, for: .top)
             .scrollContentBackground(.hidden)
     }
+    
+    func macContentWidth() -> some View {
+        #if os(macOS)
+        self.frame(maxWidth: 850)
+            .frame(maxWidth: .infinity, alignment: .center)
+        #else
+        self
+        #endif
+    }
 }
 
 struct AdaptiveGlassContainer<Content: View>: View {

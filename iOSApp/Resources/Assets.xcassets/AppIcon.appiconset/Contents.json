@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "light final.png",
+      "filename" : "budget_icon.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "dark-final.png",
+      "filename" : "budget_icon 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,7 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "dark-final 1.png",
+      "filename" : "budget_icon 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

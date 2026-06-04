@@ -37,6 +37,7 @@ struct BudgetView: View {
                     }
                     .padding()
                 }
+                .macContentWidth()
             }
             .applyScrollEdgeEffect()
         }
@@ -59,14 +60,13 @@ struct BudgetView: View {
             #endif
         }
         .task { await loadAll() }
+        #if os(iOS)
         .alert("Budget Amount", isPresented: Binding(
             get: { editingCategory != nil },
             set: { if !$0 { editingCategory = nil } }
         )) {
             TextField("Amount", text: $editBudgetString)
-                #if os(iOS)
                 .keyboardType(.decimalPad)
-                #endif
             Button("Cancel", role: .cancel) { editingCategory = nil }
             Button("Save") {
                 if let cat = editingCategory {
@@ -76,6 +76,41 @@ struct BudgetView: View {
         } message: {
             if let cat = editingCategory {
                 Text("Enter budgeted amount for \(cat.name)")
+            }
+        }
+        #else
+        .popover(item: $editingCategory) { cat in
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Budget for \(cat.name)")
+                    .font(AppTheme.Fonts.headline)
+                
+                TextField("Amount", text: $editBudgetString)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 200)
+                
+                HStack {
+                    Button("Cancel") {
+                        editingCategory = nil
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Spacer()
+                    
+                    Button("Save") {
+                        saveBudget(for: cat)
+                        editingCategory = nil
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.accent)
+                }
+            }
+            .padding()
+            .frame(width: 240)
+        }
+        #endif
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("BudgetDataChanged"))) { _ in
+            Task {
+                await loadAll()
             }
         }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {

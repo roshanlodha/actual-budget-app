@@ -57,6 +57,7 @@ struct AccountsView: View {
                     }
                     .padding()
                 }
+                .macContentWidth()
             }
             .applyScrollEdgeEffect()
         }
@@ -72,6 +73,9 @@ struct AccountsView: View {
         }
         .task { await reload() }
         .refreshable { await reload() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("BudgetDataChanged"))) { _ in
+            Task { await reload() }
+        }
         .alert("Error", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }

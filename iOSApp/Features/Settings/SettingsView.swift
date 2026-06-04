@@ -149,6 +149,7 @@ struct SettingsView: View {
                     }
                     .padding()
                 }
+                .macContentWidth()
             }
             .applyScrollEdgeEffect()
         }

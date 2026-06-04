@@ -8,6 +8,12 @@ public final class LocalBudgetRepository: BudgetRepository {
         try? setupSchema()
     }
     
+    private func postDataChangedNotification() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: NSNotification.Name("BudgetDataChanged"), object: nil)
+        }
+    }
+    
     private func setupSchema() throws {
         try db.execute("""
         CREATE TABLE IF NOT EXISTS accounts (
@@ -126,12 +132,14 @@ public final class LocalBudgetRepository: BudgetRepository {
         let payeeId = UUID().uuidString
         try db.execute("INSERT INTO payees (id, name, category_id, transfer_account_id) VALUES (?, ?, NULL, ?);",
                        arguments: [payeeId, "Transfer: \(name)", id])
+        postDataChangedNotification()
         return id
     }
     
     public func updateAccount(_ account: Account) async throws {
         try db.execute("UPDATE accounts SET name = ?, offbudget = ?, closed = ? WHERE id = ?;",
                        arguments: [account.name, account.offbudget, account.closed, account.id])
+        postDataChangedNotification()
     }
     
     public func deleteAccount(id: String) async throws {
@@ -140,6 +148,7 @@ public final class LocalBudgetRepository: BudgetRepository {
             try db.execute("DELETE FROM payees WHERE transfer_account_id = ?;", arguments: [id])
             try db.execute("DELETE FROM accounts WHERE id = ?;", arguments: [id])
         }
+        postDataChangedNotification()
     }
     
     public func fetchCategoryGroups() async throws -> [CategoryGroup] {
@@ -189,6 +198,7 @@ public final class LocalBudgetRepository: BudgetRepository {
         let id = UUID().uuidString
         try db.execute("INSERT INTO categories (id, name, is_income, hidden, group_id, color, icon) VALUES (?, ?, ?, 0, ?, ?, ?);",
                        arguments: [id, name, isIncome ? 1 : 0, groupId, color ?? NSNull(), icon ?? NSNull()])
+        postDataChangedNotification()
         return id
     }
     
@@ -204,8 +214,8 @@ public final class LocalBudgetRepository: BudgetRepository {
             category.group_id ?? NSNull(),
             category.color ?? NSNull(),
             category.icon ?? NSNull(),
-            category.id
         ])
+        postDataChangedNotification()
     }
     
     public func deleteCategory(id: String) async throws {
@@ -214,6 +224,7 @@ public final class LocalBudgetRepository: BudgetRepository {
             try db.execute("UPDATE transactions SET category_id = NULL WHERE category_id = ?;", arguments: [id])
             try db.execute("DELETE FROM categories WHERE id = ?;", arguments: [id])
         }
+        postDataChangedNotification()
     }
     
     // MARK: - Payees
@@ -338,6 +349,7 @@ public final class LocalBudgetRepository: BudgetRepository {
                 transaction.cleared ?? false
             ])
         }
+        postDataChangedNotification()
     }
     
     public func updateTransaction(_ transaction: Transaction) async throws {
@@ -373,6 +385,7 @@ public final class LocalBudgetRepository: BudgetRepository {
                 ])
             }
         }
+        postDataChangedNotification()
     }
     
     public func deleteTransaction(id: String) async throws {
@@ -384,6 +397,7 @@ public final class LocalBudgetRepository: BudgetRepository {
                 try db.execute("DELETE FROM transactions WHERE id = ?;", arguments: [id])
             }
         }
+        postDataChangedNotification()
     }
     
     public func fetchAccountBalance(accountId: String) async throws -> Int {
@@ -566,6 +580,7 @@ public final class LocalBudgetRepository: BudgetRepository {
             VALUES (?, ?, ?, 1)
             ON CONFLICT(month, category_id) DO UPDATE SET budgeted = excluded.budgeted;
         """, arguments: [month, categoryId, budgeted])
+        postDataChangedNotification()
     }
     
     // MARK: - SimpleFIN Account Links

@@ -12,6 +12,7 @@ struct AllTransactionsView: View {
     @State private var filterGranularity: Granularity = .day
     @State private var filterValue: Int = 30
     @State private var activeSheet: SheetType?
+    @State private var searchText: String = ""
 
     private var repository: BudgetRepository {
         guard let repo = appState.repository else { fatalError("Repository unavailable") }
@@ -28,9 +29,19 @@ struct AllTransactionsView: View {
         let allAccountIds = Set(accounts.map { $0.id })
         let targetAccountIds = onBudgetOnly ? onBudgetAccountIds : allAccountIds
         
-        return transactions
+        var list = transactions
             .filter { targetAccountIds.contains($0.account) }
-            .sorted { $0.date > $1.date }
+            
+        if !searchText.isEmpty {
+            list = list.filter { tx in
+                let notesMatch = tx.notes?.localizedCaseInsensitiveContains(searchText) ?? false
+                let payeeMatch = payeeText(tx).localizedCaseInsensitiveContains(searchText)
+                let categoryMatch = (categoriesById[tx.category ?? ""]?.name).map { $0.localizedCaseInsensitiveContains(searchText) } ?? false
+                return notesMatch || payeeMatch || categoryMatch
+            }
+        }
+        
+        return list.sorted { $0.date > $1.date }
     }
 
     private var listTransactions: [Transaction] {
@@ -78,10 +89,12 @@ struct AllTransactionsView: View {
                     }
                     .padding()
                 }
+                .macContentWidth()
             }
             .applyScrollEdgeEffect()
         }
         .navigationTitle("All Transactions")
+        .searchable(text: $searchText, prompt: "Search transactions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -91,6 +104,9 @@ struct AllTransactionsView: View {
         }
         .task { await load() }
         .refreshable { await load() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("BudgetDataChanged"))) { _ in
+            Task { await load() }
+        }
         .sheet(item: $activeSheet) { sheetType in
             switch sheetType {
             case .add:

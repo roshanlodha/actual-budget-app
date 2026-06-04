@@ -9,6 +9,7 @@ struct TransactionsView: View {
     @State private var payeesById: [String: Payee] = [:]
     @State private var errorMessage: String?
     @State private var activeSheet: SheetType?
+    @State private var searchText: String = ""
 
     private var repository: BudgetRepository {
         guard let repo = appState.repository else { fatalError("Repository unavailable") }
@@ -16,7 +17,16 @@ struct TransactionsView: View {
     }
 
     var sortedTransactions: [Transaction] {
-        transactions.sorted { ($0.date) > ($1.date) }
+        var list = transactions
+        if !searchText.isEmpty {
+            list = list.filter { tx in
+                let notesMatch = tx.notes?.localizedCaseInsensitiveContains(searchText) ?? false
+                let payeeMatch = payeeText(tx).localizedCaseInsensitiveContains(searchText)
+                let categoryMatch = (categoriesById[tx.category ?? ""]?.name).map { $0.localizedCaseInsensitiveContains(searchText) } ?? false
+                return notesMatch || payeeMatch || categoryMatch
+            }
+        }
+        return list.sorted { ($0.date) > ($1.date) }
     }
 
     var body: some View {
@@ -61,10 +71,12 @@ struct TransactionsView: View {
                     }
                     .padding()
                 }
+                .macContentWidth()
             }
             .applyScrollEdgeEffect()
         }
         .navigationTitle(account.name)
+        .searchable(text: $searchText, prompt: "Search transactions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -74,6 +86,9 @@ struct TransactionsView: View {
         }
         .task { await loadAll() }
         .refreshable { await loadAll() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("BudgetDataChanged"))) { _ in
+            Task { await loadAll() }
+        }
         .sheet(item: $activeSheet) { sheetType in
             switch sheetType {
             case .add:
