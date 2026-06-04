@@ -6,6 +6,7 @@ struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedAngle: Double? = nil
+    @State private var selectedCategoryName: String? = nil
 
     var body: some View {
         ZStack {
@@ -216,19 +217,9 @@ struct DashboardView: View {
                         
                         // Section 4: This Month Mini Chart (Pie/Donut)
                         GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                if let selected = selectedCategory {
-                                    Text("Month Expenses: \(selected.category) (\(formatMoney(Int(selected.amount * 100))))")
-                                        .font(AppTheme.Fonts.subheadline)
-                                        .bold()
-                                } else {
-                                    Text("Month Expenses")
-                                        .font(AppTheme.Fonts.subheadline)
-                                        .bold()
-                                }
-                                Text("This month")
-                                    .font(AppTheme.Fonts.caption)
-                                    .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Month Expenses")
+                                    .font(AppTheme.Fonts.headline)
                                 
                                 if viewModel.isLoading {
                                     HStack {
@@ -236,26 +227,139 @@ struct DashboardView: View {
                                         ProgressView()
                                         Spacer()
                                     }
-                                    .frame(height: 140)
+                                    .frame(height: 180)
                                 } else if viewModel.currentMonthCategoryBreakdown.isEmpty {
                                     emptyStateView(title: "No Expenses", systemImage: "chart.pie", description: "No expenses recorded this month.")
-                                        .frame(height: 140)
+                                        .frame(height: 180)
                                 } else {
-                                    Chart(viewModel.currentMonthCategoryBreakdown) { item in
-                                        SectorMark(
-                                            angle: .value("Amount", item.amount),
-                                            innerRadius: .ratio(0.6),
-                                            angularInset: 1.5
+                                    ZStack {
+                                        Chart(viewModel.currentMonthCategoryBreakdown) { item in
+                                            SectorMark(
+                                                angle: .value("Amount", item.amount),
+                                                innerRadius: .ratio(0.65),
+                                                outerRadius: selectedCategoryName == item.category ? .ratio(1.0) : .ratio(0.9),
+                                                angularInset: 1.5
+                                            )
+                                            .foregroundStyle(by: .value("Category", item.category))
+                                            .opacity(selectedCategoryName == nil || selectedCategoryName == item.category ? 1.0 : 0.35)
+                                            .accessibilityLabel("\(item.category) \(formatMoney(Int(item.amount * 100)))")
+                                        }
+                                        .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
+                                        .chartAngleSelection(value: $selectedAngle)
+                                        .chartLegend(.hidden)
+                                        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: viewModel.currentMonthCategoryBreakdown)
+                                        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: selectedCategoryName)
+                                        .frame(height: 180)
+                                        
+                                        // Dynamic central text and glass indicator
+                                        VStack(spacing: 2) {
+                                            if let activeCategoryName = selectedCategoryName,
+                                               let categoryExpense = viewModel.currentMonthCategoryBreakdown.first(where: { $0.category == activeCategoryName }) {
+                                                Text(activeCategoryName)
+                                                    .font(AppTheme.Fonts.caption)
+                                                    .bold()
+                                                    .foregroundColor(viewModel.categoryColorMap[activeCategoryName] ?? .primary)
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.6)
+                                                    .padding(.horizontal, 8)
+                                                
+                                                Text(formatMoney(Int(categoryExpense.amount * 100)))
+                                                    .font(AppTheme.Fonts.subtitle)
+                                                    .bold()
+                                                    .foregroundColor(.primary)
+                                                    .minimumScaleFactor(0.5)
+                                                    .lineLimit(1)
+                                                
+                                                Text("Selected")
+                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                    .foregroundColor(.secondary)
+                                            } else {
+                                                Text("Total")
+                                                    .font(AppTheme.Fonts.caption)
+                                                    .foregroundColor(.secondary)
+                                                
+                                                let total = Int(viewModel.currentMonthCategoryBreakdown.map { $0.amount }.reduce(0, +) * 100)
+                                                Text(formatMoney(total))
+                                                    .font(AppTheme.Fonts.subtitle)
+                                                    .bold()
+                                                    .foregroundColor(.primary)
+                                                    .minimumScaleFactor(0.5)
+                                                    .lineLimit(1)
+                                            }
+                                        }
+                                        .frame(width: 100, height: 100)
+                                        .background(
+                                            Circle()
+                                                .glassEffect(.clear, in: .circle)
                                         )
-                                        .foregroundStyle(by: .value("Category", item.category))
-                                        .opacity(selectedCategory == nil || selectedCategory?.category == item.category ? 1.0 : 0.4)
-                                        .accessibilityLabel("\(item.category) \(formatMoney(Int(item.amount * 100)))")
+                                        .contentShape(Circle())
+                                        .onTapGesture {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                selectedCategoryName = nil
+                                                selectedAngle = nil
+                                            }
+                                        }
                                     }
-                                    .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
-                                    .chartAngleSelection(value: $selectedAngle)
-                                    .chartLegend(.hidden)
-                                    .animation(reduceMotion ? nil : .spring(), value: viewModel.currentMonthCategoryBreakdown)
-                                    .frame(height: 140)
+                                    .onChange(of: selectedAngle) { newValue in
+                                        if let newValue {
+                                            var cumulativeSum = 0.0
+                                            for item in viewModel.currentMonthCategoryBreakdown {
+                                                cumulativeSum += item.amount
+                                                if newValue <= cumulativeSum {
+                                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                                        selectedCategoryName = item.category
+                                                    }
+                                                    return
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Interactive Legend Pills
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(viewModel.currentMonthCategoryBreakdown) { item in
+                                                let isSelected = selectedCategoryName == item.category
+                                                let catColor = viewModel.categoryColorMap[item.category] ?? .gray
+                                                
+                                                Button {
+                                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                                                        if isSelected {
+                                                            selectedCategoryName = nil
+                                                            selectedAngle = nil
+                                                        } else {
+                                                            selectedCategoryName = item.category
+                                                            selectedAngle = findAngleForCategory(item.category)
+                                                        }
+                                                    }
+                                                } label: {
+                                                    HStack(spacing: 6) {
+                                                        Circle()
+                                                            .fill(catColor)
+                                                            .frame(width: 8, height: 8)
+                                                        
+                                                        Text(item.category)
+                                                            .font(AppTheme.Fonts.caption)
+                                                            .foregroundColor(isSelected ? .white : .primary)
+                                                    }
+                                                    .padding(.horizontal, 12)
+                                                    .padding(.vertical, 6)
+                                                    .background(
+                                                        isSelected ? 
+                                                        AppTheme.accent : 
+                                                        Color.primary.opacity(0.06)
+                                                    )
+                                                    .clipShape(Capsule())
+                                                    .overlay(
+                                                        Capsule()
+                                                            .stroke(isSelected ? AppTheme.accent : Color.primary.opacity(0.12), lineWidth: 1)
+                                                    )
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                        }
+                                        .padding(.horizontal, 4)
+                                    }
                                 }
                             }
                         }
@@ -433,13 +537,13 @@ struct DashboardView: View {
         }
     }
 
-    private var selectedCategory: CategoryExpense? {
-        guard let selectedAngle = selectedAngle else { return nil }
+    private func findAngleForCategory(_ categoryName: String) -> Double? {
         var cumulativeSum = 0.0
         for item in viewModel.currentMonthCategoryBreakdown {
+            let prevSum = cumulativeSum
             cumulativeSum += item.amount
-            if selectedAngle <= cumulativeSum {
-                return item
+            if item.category == categoryName {
+                return (prevSum + cumulativeSum) / 2.0
             }
         }
         return nil
@@ -474,27 +578,11 @@ struct DashboardView: View {
         return "Day \(day.dayNumber): Income \(formatMoney(day.income)), Expenses \(formatMoney(day.expense))"
     }
 
-    @ViewBuilder
     private func emptyStateView(title: String, systemImage: String, description: String) -> some View {
-        if #available(iOS 17.0, *) {
-            ContentUnavailableView(
-                title,
-                systemImage: systemImage,
-                description: Text(description)
-            )
-        } else {
-            VStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.title)
-                    .foregroundColor(.secondary)
-                Text(title)
-                    .font(.headline)
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-        }
+        ContentUnavailableView(
+            title,
+            systemImage: systemImage,
+            description: Text(description)
+        )
     }
 }

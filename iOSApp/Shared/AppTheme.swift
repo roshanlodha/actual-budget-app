@@ -45,13 +45,8 @@ extension Color {
 }
 
 extension View {
-    @ViewBuilder
     func applyScrollEdgeEffect() -> some View {
-        if #available(iOS 26, *) {
-            self.scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            self
-        }
+        self.scrollEdgeEffectStyle(.soft, for: .top)
     }
 }
 
@@ -60,11 +55,7 @@ struct AdaptiveGlassContainer<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        if #available(iOS 26, *) {
-            GlassEffectContainer(spacing: spacing) {
-                content()
-            }
-        } else {
+        GlassEffectContainer(spacing: spacing) {
             content()
         }
     }

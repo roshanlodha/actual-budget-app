@@ -104,22 +104,22 @@ public final class DashboardViewModel: ObservableObject {
             
             // Generate category colors map
             let palette: [Color] = [
-                Color(red: 0.18, green: 0.50, blue: 0.93), // Premium Blue
-                Color(red: 0.95, green: 0.60, blue: 0.18), // Amber/Orange
-                Color(red: 0.10, green: 0.74, blue: 0.61), // Mint/Teal
-                Color(red: 0.58, green: 0.27, blue: 0.85), // Premium Purple
-                Color(red: 0.92, green: 0.30, blue: 0.26), // Coral Red
-                Color(red: 0.18, green: 0.80, blue: 0.44), // Emerald Green
-                Color(red: 0.90, green: 0.49, blue: 0.13), // Bronze
-                Color(red: 0.20, green: 0.20, blue: 0.20), // Charcoal
-                Color(red: 0.60, green: 0.60, blue: 0.60), // Mid Gray
-                Color(red: 0.90, green: 0.29, blue: 0.58)  // Rose Pink
+                Color(hex: "#6366F1"), // Indigo/Violet
+                Color(hex: "#F59E0B"), // Warm Amber
+                Color(hex: "#10B981"), // Minty Emerald
+                Color(hex: "#EC4899"), // Vibrant Orchid Pink
+                Color(hex: "#3B82F6"), // Luminous Sapphire
+                Color(hex: "#06B6D4"), // Sky Cyan
+                Color(hex: "#F43F5E"), // Rose Coral
+                Color(hex: "#8B5CF6"), // Electric Violet
+                Color(hex: "#14B8A6"), // Seafoam Teal
+                Color(hex: "#F97316")  // Peach Orange
             ]
             var tempColorMap: [String: Color] = [:]
             for (index, cat) in fetchedCategories.enumerated() {
                 tempColorMap[cat.name] = palette[index % palette.count]
             }
-            tempColorMap["Uncategorized"] = .gray
+            tempColorMap["Uncategorized"] = Color(hex: "#94A3B8") // Slate Gray
             
             // Calculate query range
             let calendar = Calendar.current
