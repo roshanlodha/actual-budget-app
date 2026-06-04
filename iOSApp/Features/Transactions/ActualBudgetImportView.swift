@@ -43,7 +43,7 @@ struct ActualBudgetImportView: View {
                         .padding(.vertical, 12)
                     
                     Divider()
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.primary.opacity(0.08))
                     
                     ScrollView {
                         VStack(spacing: 20) {
@@ -62,28 +62,25 @@ struct ActualBudgetImportView: View {
                     }
                     
                     Divider()
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.primary.opacity(0.08))
                     
                     navigationBarBottom
                         .padding()
                 }
                 
                 if isImporting {
-                    Color.black.opacity(0.6).ignoresSafeArea()
+                    Color.black.opacity(0.4).ignoresSafeArea()
                     VStack(spacing: 20) {
                         ProgressView()
                             .progressViewStyle(.circular)
                             .tint(AppTheme.accent)
                         Text("Importing Budget...")
                             .font(AppTheme.Fonts.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                     }
                     .padding(24)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(UIColor.systemBackground).opacity(0.95))
-                            .shadow(radius: 20)
-                    )
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
                 }
             }
             .navigationTitle("Import Actual Budget")
@@ -127,17 +124,17 @@ struct ActualBudgetImportView: View {
         HStack(spacing: 4) {
             ZStack {
                 Circle()
-                    .fill(step == num ? AppTheme.accent : (step > num ? AppTheme.positive : Color.white.opacity(0.1)))
+                    .fill(step == num ? AppTheme.accent : (step > num ? AppTheme.positive : Color.primary.opacity(0.08)))
                     .frame(width: 24, height: 24)
                 
                 if step > num {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.black)
+                        .foregroundColor(.white)
                 } else {
                     Text("\(num)")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(step == num ? .black : .primary)
+                        .foregroundColor(step == num ? .white : .primary)
                 }
             }
             Text(label)
@@ -150,7 +147,7 @@ struct ActualBudgetImportView: View {
     
     private func lineConnector(active: Bool) -> some View {
         Rectangle()
-            .fill(active ? AppTheme.accent : Color.white.opacity(0.1))
+            .fill(active ? AppTheme.accent : Color.primary.opacity(0.08))
             .frame(height: 2)
             .frame(maxWidth: .infinity)
     }
@@ -164,9 +161,10 @@ struct ActualBudgetImportView: View {
                 } label: {
                     Text("Back")
                         .font(AppTheme.Fonts.headline)
+                        .foregroundColor(.primary)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 24)
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.primary.opacity(0.08))
                         .cornerRadius(10)
                 }
                 .buttonStyle(.plain)
@@ -192,10 +190,10 @@ struct ActualBudgetImportView: View {
                 } label: {
                     Text("Next")
                         .font(AppTheme.Fonts.headline)
-                        .foregroundColor(.black)
+                        .foregroundColor(.white)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 32)
-                        .background(csvText.isEmpty ? Color.gray : AppTheme.accent)
+                        .background(csvText.isEmpty ? Color.primary.opacity(0.08) : AppTheme.accent)
                         .cornerRadius(10)
                 }
                 .disabled(csvText.isEmpty)
@@ -206,7 +204,7 @@ struct ActualBudgetImportView: View {
                 } label: {
                     Text("Import Budget")
                         .font(AppTheme.Fonts.headline)
-                        .foregroundColor(.black)
+                        .foregroundColor(.white)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 32)
                         .background(AppTheme.accent)
@@ -257,8 +255,6 @@ struct ActualBudgetImportView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
             }
-            
-
         }
     }
     
@@ -337,7 +333,7 @@ struct ActualBudgetImportView: View {
                                 
                                 if cat.id != groupCats.last?.id {
                                     Divider()
-                                        .background(Color.white.opacity(0.1))
+                                        .background(Color.primary.opacity(0.08))
                                 }
                             }
                         }
@@ -372,7 +368,7 @@ struct ActualBudgetImportView: View {
                             .foregroundColor(.primary)
                     }
                     
-                    Divider().background(Color.white.opacity(0.1))
+                    Divider().background(Color.primary.opacity(0.08))
                     
                     HStack {
                         Text("Categories to Create")

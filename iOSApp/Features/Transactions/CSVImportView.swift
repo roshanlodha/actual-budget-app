@@ -21,6 +21,7 @@ struct CSVImportView: View {
     
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     
     @State private var step = 1
     @State private var csvText = ""
@@ -102,20 +103,23 @@ struct CSVImportView: View {
                         .background(Color.white.opacity(0.1))
                     
                     ScrollView {
-                        VStack(spacing: 20) {
-                            switch step {
-                            case 1:
-                                sourceSelectionStep
-                            case 2:
-                                mappingStep
-                            case 3:
-                                previewStep
-                            default:
-                                EmptyView()
+                        AdaptiveGlassContainer(spacing: 20) {
+                            VStack(spacing: 20) {
+                                switch step {
+                                case 1:
+                                    sourceSelectionStep
+                                case 2:
+                                    mappingStep
+                                case 3:
+                                    previewStep
+                                default:
+                                    EmptyView()
+                                }
                             }
+                            .padding()
                         }
-                        .padding()
                     }
+                    .applyScrollEdgeEffect()
                     
                     Divider()
                         .background(Color.white.opacity(0.1))
@@ -332,11 +336,13 @@ struct CSVImportView: View {
                     .font(.system(.body, design: .monospaced))
                     .frame(height: 150)
                     .padding(4)
-                    .background(Color.white.opacity(0.05))
+                    .foregroundColor(.primary)
+                    .scrollContentBackground(.hidden)
+                    .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            .stroke(colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.10), lineWidth: 1)
                     )
             }
             

@@ -25,57 +25,80 @@ struct IgnoredCategoriesView: View {
             
             if isLoading {
                 ProgressView()
+                    .tint(AppTheme.accent)
             } else {
-                List {
-                    Section {
-                        Text("Selected categories will be hidden and excluded from all calculations on the Dashboard (averages, charts, cash flow, calendar). Useful for reimbursements or shared group bills.")
-                            .font(AppTheme.Fonts.footnote)
-                            .foregroundColor(.secondary)
-                            .padding(.vertical, 4)
-                    }
-                    .listRowBackground(Color.clear)
-                    
-                    ForEach(groups) { group in
-                        Section(header: Text(group.name).font(AppTheme.Fonts.subtitle).foregroundColor(.primary)) {
-                            if group.categories.isEmpty {
-                                Text("No categories in this group")
+                ScrollView {
+                    AdaptiveGlassContainer(spacing: 24) {
+                        VStack(spacing: 24) {
+                            // Intro/Footnote card
+                            GlassCard(cornerRadius: 15) {
+                                Text("Selected categories will be hidden and excluded from all calculations on the Dashboard (averages, charts, cash flow, calendar). Useful for reimbursements or shared group bills.")
                                     .font(AppTheme.Fonts.footnote)
                                     .foregroundColor(.secondary)
-                            } else {
-                                ForEach(group.categories) { cat in
-                                    let isIgnored = ignoredIDs.contains(cat.id)
-                                    Button {
-                                        toggleIgnore(categoryId: cat.id)
-                                    } label: {
-                                        HStack(spacing: 12) {
-                                            Image(systemName: cat.icon ?? "tag.fill")
-                                                .foregroundColor(.white)
-                                                .frame(width: 28, height: 28)
-                                                .background(Color(hex: cat.color ?? "#8D93AB"))
-                                                .clipShape(Circle())
-                                            
-                                            Text(cat.name)
-                                                .font(AppTheme.Fonts.body)
-                                                .foregroundColor(.primary)
-                                            
-                                            Spacer()
-                                            
-                                            if isIgnored {
-                                                Image(systemName: "eye.slash.fill")
-                                                    .foregroundColor(AppTheme.destructive)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            
+                            ForEach(groups) { group in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(group.name)
+                                        .font(AppTheme.Fonts.subtitle)
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal)
+                                    
+                                    GlassCard(cornerRadius: 15) {
+                                        VStack(spacing: 14) {
+                                            if group.categories.isEmpty {
+                                                Text("No categories in this group")
+                                                    .font(AppTheme.Fonts.footnote)
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
                                             } else {
-                                                Image(systemName: "eye.fill")
-                                                    .foregroundColor(.green)
+                                                ForEach(Array(group.categories.enumerated()), id: \.1.id) { index, cat in
+                                                    let isIgnored = ignoredIDs.contains(cat.id)
+                                                    
+                                                    Button {
+                                                        toggleIgnore(categoryId: cat.id)
+                                                    } label: {
+                                                        HStack(spacing: 12) {
+                                                            Image(systemName: cat.icon ?? "tag.fill")
+                                                                .foregroundColor(.white)
+                                                                .frame(width: 28, height: 28)
+                                                                .background(Color(hex: cat.color ?? "#8D93AB"))
+                                                                .clipShape(Circle())
+                                                            
+                                                            Text(cat.name)
+                                                                .font(AppTheme.Fonts.body)
+                                                                .foregroundColor(.primary)
+                                                            
+                                                            Spacer()
+                                                            
+                                                            if isIgnored {
+                                                                Image(systemName: "eye.slash.fill")
+                                                                    .foregroundColor(AppTheme.destructive)
+                                                            } else {
+                                                                Image(systemName: "eye.fill")
+                                                                    .foregroundColor(AppTheme.positive)
+                                                            }
+                                                        }
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    
+                                                    if index < group.categories.count - 1 {
+                                                        Divider()
+                                                            .background(Color.primary.opacity(0.08))
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                        .listRowBackground(Color.primary.opacity(0.05))
+                        .padding()
                     }
                 }
-                .scrollContentBackground(.hidden)
+                .applyScrollEdgeEffect()
             }
         }
         .navigationTitle("Ignored Categories")

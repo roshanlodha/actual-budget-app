@@ -10,39 +10,38 @@ struct TransactionRow: View {
     var onDelete: ((Transaction) -> Void)?
 
     var body: some View {
-        HStack(spacing: 16) {
-            let category = categoriesById[transaction.category ?? ""]
-            let iconName = category?.icon ?? ((transaction.amount ?? 0) < 0 ? "arrow.down.left" : "arrow.up.right")
-            let iconColor = Color(hex: category?.color ?? "#8D93AB")
-            
-            Image(systemName: iconName)
-                .font(.footnote.bold())
-                .foregroundColor(.white)
-                .frame(width: 36, height: 36)
-                .background(iconColor)
-                .clipShape(Circle())
+        GlassCard(cornerRadius: 15, isInteractive: true) {
+            HStack(spacing: 16) {
+                let category = categoriesById[transaction.category ?? ""]
+                let iconName = category?.icon ?? ((transaction.amount ?? 0) < 0 ? "arrow.down.left" : "arrow.up.right")
+                let iconColor = Color(hex: category?.color ?? "#8D93AB")
+                
+                Image(systemName: iconName)
+                    .font(.footnote.bold())
+                    .foregroundColor(.white)
+                    .frame(width: 36, height: 36)
+                    .background(iconColor)
+                    .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(primaryText())
-                    .font(AppTheme.Fonts.headline)
-                    .foregroundColor(.primary)
-                Text(secondaryText())
-                    .font(AppTheme.Fonts.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(CurrencyFormatter.shared.formatSigned(transaction.amount ?? 0, currencyCode: currencyCode))
-                    .font(AppTheme.Fonts.body.monospacedDigit())
-                    .foregroundStyle((transaction.amount ?? 0) < 0 ? .primary : AppTheme.positive)
-                Text(transaction.date)
-                    .font(AppTheme.Fonts.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(primaryText())
+                        .font(AppTheme.Fonts.headline)
+                        .foregroundColor(.primary)
+                    Text(secondaryText())
+                        .font(AppTheme.Fonts.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(CurrencyFormatter.shared.formatSigned(transaction.amount ?? 0, currencyCode: currencyCode))
+                        .font(AppTheme.Fonts.body.monospacedDigit())
+                        .foregroundStyle((transaction.amount ?? 0) < 0 ? .primary : AppTheme.positive)
+                    Text(transaction.date)
+                        .font(AppTheme.Fonts.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
-        .padding()
-        .background(Color.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture { onEdit?(transaction) }
         .contextMenu {

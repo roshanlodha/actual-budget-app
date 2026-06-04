@@ -20,22 +20,25 @@ struct BudgetView: View {
         ZStack {
             AppBackground()
             ScrollView {
-                VStack(spacing: 24) {
-                    header()
-                    
-                    if monthGroups.isEmpty {
-                        GlassCard {
-                             Text("No budget categories found for this month.")
-                                 .font(AppTheme.Fonts.body)
-                                 .foregroundStyle(.secondary)
-                                 .frame(maxWidth: .infinity, minHeight: 100)
-                         }
-                    } else {
-                        categoryGroups
+                AdaptiveGlassContainer(spacing: 24) {
+                    VStack(spacing: 24) {
+                        header()
+                        
+                        if monthGroups.isEmpty {
+                            GlassCard {
+                                 Text("No budget categories found for this month.")
+                                     .font(AppTheme.Fonts.body)
+                                     .foregroundStyle(.secondary)
+                                     .frame(maxWidth: .infinity, minHeight: 100)
+                             }
+                        } else {
+                            categoryGroups
+                        }
                     }
+                    .padding()
                 }
-                .padding()
             }
+            .applyScrollEdgeEffect()
         }
         .navigationTitle(monthTitle())
         .toolbar {
@@ -95,33 +98,32 @@ struct BudgetView: View {
     
     private var categoryGroups: some View {
         ForEach(sortedGroups(), id: \.id) { group in
-            VStack(alignment: .leading, spacing: 12) {
-                DisclosureGroup(isExpanded: Binding(
-                    get: { expandedGroups.contains(group.id) },
-                    set: { isExpanded in
-                        if isExpanded { expandedGroups.insert(group.id) } else { expandedGroups.remove(group.id) }
+            GlassCard(cornerRadius: 15) {
+                VStack(alignment: .leading, spacing: 12) {
+                    DisclosureGroup(isExpanded: Binding(
+                        get: { expandedGroups.contains(group.id) },
+                        set: { isExpanded in
+                            if isExpanded { expandedGroups.insert(group.id) } else { expandedGroups.remove(group.id) }
+                        }
+                    )) {
+                        ForEach(group.categories ?? [], id: \.id) { cat in
+                            categoryRow(cat)
+                                .padding(.top, 8)
+                        }
+                    } label: {
+                        HStack {
+                            Text(group.name)
+                                .font(AppTheme.Fonts.subtitle)
+                                .foregroundColor(.primary) 
+                            Spacer()
+                            Text(formatMoney(group.balance ?? 0))
+                                .font(AppTheme.Fonts.body.monospacedDigit())
+                                .foregroundStyle(.secondary) 
+                        }
                     }
-                )) {
-                    ForEach(group.categories ?? [], id: \.id) { cat in
-                        categoryRow(cat)
-                            .padding(.top, 8)
-                    }
-                } label: {
-                    HStack {
-                        Text(group.name)
-                            .font(AppTheme.Fonts.subtitle)
-                            .foregroundColor(.primary) 
-                        Spacer()
-                        Text(formatMoney(group.balance ?? 0))
-                            .font(AppTheme.Fonts.body.monospacedDigit())
-                            .foregroundStyle(.secondary) 
-                    }
+                    .accentColor(.secondary) 
                 }
-                .accentColor(.secondary) 
             }
-            .padding()
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         }
     }
 

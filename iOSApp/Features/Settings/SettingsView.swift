@@ -12,64 +12,148 @@ struct SettingsView: View {
     var body: some View {
         ZStack {
             AppBackground()
-            List {
-                Section("Active Budget") {
-                    HStack {
-                        Text("ID")
-                        Spacer()
-                        Text(appState.selectedBudgetID ?? "Unknown")
-                            .font(.caption.monospaced())
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                    }
-                    Button {
-                        showingImportConfirmation = true
-                    } label: {
-                        Label("Import from Actual", systemImage: "arrow.down.doc.fill")
-                    }
-                    
-                    Button(role: .destructive) {
-                        showingResetAlert = true
-                    } label: {
-                        Label("Reset App & Delete Data", systemImage: "trash.fill")
-                    }
-                }
-                .listRowBackground(Color.primary.opacity(0.05))
-                
-                Section("Budget Structure") {
-                    NavigationLink {
-                        CategoryManagerView()
-                    } label: {
-                        Label("Manage Categories", systemImage: "tag.fill")
-                    }
-                    NavigationLink {
-                        IgnoredCategoriesView()
-                    } label: {
-                        Label("Ignored Dashboard Categories", systemImage: "eye.slash.fill")
-                    }
-                }
-                .listRowBackground(Color.primary.opacity(0.05))
-                
-                Section("Preferences") {
-
-                    Picker("Currency", selection: $appState.currencyCode) {
-                        ForEach(CurrencyFormatter.supportedCurrencies, id: \.0) { code, name in
-                            Text("\(code) - \(name)").tag(code)
+            ScrollView {
+                AdaptiveGlassContainer(spacing: 24) {
+                    VStack(spacing: 24) {
+                        // Section 1: Active Budget
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Active Budget")
+                                .font(AppTheme.Fonts.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal)
+                            
+                            GlassCard(cornerRadius: 15) {
+                                VStack(spacing: 14) {
+                                    HStack {
+                                        Text("ID")
+                                            .font(AppTheme.Fonts.body)
+                                        Spacer()
+                                        Text(appState.selectedBudgetID ?? "Unknown")
+                                            .font(.caption.monospaced())
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    Button {
+                                        showingImportConfirmation = true
+                                    } label: {
+                                        HStack {
+                                            Label("Import from Actual", systemImage: "arrow.down.doc.fill")
+                                                .font(AppTheme.Fonts.body)
+                                                .foregroundColor(AppTheme.accent)
+                                            Spacer()
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    Divider()
+                                    
+                                    Button {
+                                        showingResetAlert = true
+                                    } label: {
+                                        HStack {
+                                            Label("Reset App & Delete Data", systemImage: "trash.fill")
+                                                .font(AppTheme.Fonts.body)
+                                                .foregroundColor(AppTheme.destructive)
+                                            Spacer()
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        
+                        // Section 2: Budget Structure
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Budget Structure")
+                                .font(AppTheme.Fonts.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal)
+                            
+                            GlassCard(cornerRadius: 15) {
+                                VStack(spacing: 14) {
+                                    NavigationLink {
+                                        CategoryManagerView()
+                                    } label: {
+                                        HStack {
+                                            Label("Manage Categories", systemImage: "tag.fill")
+                                                .font(AppTheme.Fonts.body)
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.footnote)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    
+                                    Divider()
+                                    
+                                    NavigationLink {
+                                        IgnoredCategoriesView()
+                                    } label: {
+                                        HStack {
+                                            Label("Ignored Dashboard Categories", systemImage: "eye.slash.fill")
+                                                .font(AppTheme.Fonts.body)
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.footnote)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        
+                        // Section 3: Preferences
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Preferences")
+                                .font(AppTheme.Fonts.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal)
+                            
+                            GlassCard(cornerRadius: 15) {
+                                Picker("Currency", selection: $appState.currencyCode) {
+                                    ForEach(CurrencyFormatter.supportedCurrencies, id: \.0) { code, name in
+                                        Text("\(code) - \(name)").tag(code)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(AppTheme.accent)
+                                .font(AppTheme.Fonts.body)
+                            }
+                        }
+                        
+                        // Section 4: Logs
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Logs")
+                                .font(AppTheme.Fonts.subheadline)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal)
+                            
+                            GlassCard(cornerRadius: 15) {
+                                NavigationLink {
+                                    LogsView()
+                                } label: {
+                                    HStack {
+                                        Label("View System Logs", systemImage: "doc.text.magnifyingglass")
+                                            .font(AppTheme.Fonts.body)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.footnote)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
+                    .padding()
                 }
-                .listRowBackground(Color.primary.opacity(0.05))
-                
-                Section("Logs") {
-                    NavigationLink {
-                        LogsView()
-                    } label: {
-                        Label("View System Logs", systemImage: "doc.text.magnifyingglass")
-                    }
-                }
-                .listRowBackground(Color.primary.opacity(0.05))
             }
-            .scrollContentBackground(.hidden)
+            .applyScrollEdgeEffect()
         }
         .navigationTitle("Settings")
         .alert("Reset App", isPresented: $showingResetAlert) {

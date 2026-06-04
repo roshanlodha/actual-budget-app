@@ -43,44 +43,43 @@ struct AllTransactionsView: View {
     var body: some View {
         ZStack {
             AppBackground()
-            List {
-                filtersBar
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets())
-
-                if listTransactions.isEmpty && !isLoading {
-                    GlassCard(cornerRadius: 15) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("No transactions yet")
-                                .font(AppTheme.Fonts.headline)
-                                .foregroundColor(.primary)
-                            Text("Add a transaction to start building your history.")
-                                .font(AppTheme.Fonts.body)
-                                .foregroundStyle(.secondary)
+            ScrollView {
+                AdaptiveGlassContainer(spacing: 12) {
+                    VStack(spacing: 12) {
+                        filtersBar
+                        
+                        if listTransactions.isEmpty && !isLoading {
+                            GlassCard(cornerRadius: 15) {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("No transactions yet")
+                                        .font(AppTheme.Fonts.headline)
+                                        .foregroundColor(.primary)
+                                    Text("Add a transaction to start building your history.")
+                                        .font(AppTheme.Fonts.body)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(listTransactions, id: \.id) { tx in
+                                    TransactionRow(
+                                        transaction: tx,
+                                        accounts: accounts,
+                                        payeesById: payeesById,
+                                        categoriesById: categoriesById,
+                                        currencyCode: appState.currencyCode,
+                                        onEdit: { t in activeSheet = .edit(t) },
+                                        onDelete: { t in Task { await delete(t) } }
+                                    )
+                                }
+                            }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                } else {
-                    ForEach(listTransactions, id: \.id) { tx in
-                        TransactionRow(
-                            transaction: tx,
-                            accounts: accounts,
-                            payeesById: payeesById,
-                            categoriesById: categoriesById,
-                            currencyCode: appState.currencyCode,
-                            onEdit: { t in activeSheet = .edit(t) },
-                            onDelete: { t in Task { await delete(t) } }
-                        )
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .padding()
                 }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .applyScrollEdgeEffect()
         }
         .navigationTitle("All Transactions")
         .toolbar {
@@ -118,10 +117,11 @@ struct AllTransactionsView: View {
     }
 
     private var filtersBar: some View {
-        GlassCard(cornerRadius: 0) {
+        GlassCard(cornerRadius: 15) {
             VStack(spacing: 16) {
                 Toggle("On-budget only", isOn: $onBudgetOnly)
                     .tint(AppTheme.accent)
+                    .font(AppTheme.Fonts.body)
                 
                 Picker("Range", selection: $filterGranularity) {
                     ForEach(Granularity.allCases) { g in
@@ -131,10 +131,10 @@ struct AllTransactionsView: View {
                 .pickerStyle(.segmented)
                 
                 Stepper("Last \(filterValue) \(filterGranularity.rawValue)", value: $filterValue, in: 1...365)
+                    .font(AppTheme.Fonts.body)
             }
             .foregroundColor(.primary)
         }
-        .padding(.bottom)
     }
 
     private func isTransferToOnBudget(_ tx: Transaction) -> Bool {

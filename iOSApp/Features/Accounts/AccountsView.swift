@@ -30,32 +30,35 @@ struct AccountsView: View {
         ZStack {
             AppBackground()
             ScrollView {
-                VStack(spacing: 24) {
-                    GlassCard(cornerRadius: 15) {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Total Balance")
-                                    .font(AppTheme.Fonts.title)
-                                    .foregroundColor(.primary)
+                AdaptiveGlassContainer(spacing: 24) {
+                    VStack(spacing: 24) {
+                        GlassCard(cornerRadius: 15) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Total Balance")
+                                        .font(AppTheme.Fonts.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text(formattedAmount(totalAll()))
+                                        .font(AppTheme.Fonts.largeTitle.monospacedDigit())
+                                        .foregroundColor(.primary)
+                                }
+                                Spacer()
                             }
-                            Spacer()
-                            Text(formattedAmount(totalAll()))
-                                .font(AppTheme.Fonts.body.monospacedDigit())
-                                .foregroundColor(.primary)
+                        }
+                        if accounts.isEmpty && !isLoading {
+                            emptyState
+                        }
+                        if !onBudget.isEmpty {
+                            accountSection(title: "On-Budget", accounts: onBudget)
+                        }
+                        if !offBudget.isEmpty {
+                            accountSection(title: "Off-Budget", accounts: offBudget)
                         }
                     }
-                    if accounts.isEmpty && !isLoading {
-                        emptyState
-                    }
-                    if !onBudget.isEmpty {
-                        accountSection(title: "On-Budget", accounts: onBudget)
-                    }
-                    if !offBudget.isEmpty {
-                        accountSection(title: "Off-Budget", accounts: offBudget)
-                    }
+                    .padding()
                 }
-                .padding()
             }
+            .applyScrollEdgeEffect()
         }
         .navigationTitle("Accounts")
         .toolbar {
@@ -76,7 +79,7 @@ struct AccountsView: View {
             CreateAccountSheet { name, offbudget in
                 Task { await createAccount(name: name, offbudget: offbudget) }
             }
-            .presentationDetents([.height(250)])
+            .presentationDetents([.height(260)])
         }
     }
 
@@ -84,7 +87,7 @@ struct AccountsView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(title)
-                    .font(AppTheme.Fonts.title)
+                    .font(AppTheme.Fonts.subtitle)
                     .foregroundColor(.primary)
                 Spacer()
                 Text(formattedAmount(totalFor(accounts: accounts)))
@@ -95,15 +98,15 @@ struct AccountsView: View {
 
             ForEach(accounts) { account in
                 NavigationLink(destination: TransactionsView(account: account)) {
-                    GlassCard(cornerRadius: 15) {
+                    GlassCard(cornerRadius: 15, isInteractive: true) {
                         HStack {
-                            VStack(alignment: .leading) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text(account.name)
                                     .font(AppTheme.Fonts.headline)
                                     .foregroundColor(.primary)
                                 Text(account.closed ? "Closed" : "Active")
                                     .font(AppTheme.Fonts.footnote)
-                                    .foregroundStyle(account.closed ? .yellow : .secondary)
+                                    .foregroundStyle(account.closed ? AppTheme.destructive : .secondary)
                             }
                             Spacer()
                             Text(formattedAmount(balancesById[account.id]))
@@ -186,14 +189,22 @@ private struct CreateAccountSheet: View {
         NavigationStack {
             ZStack {
                 AppBackground()
-                Form {
-                    Section(header: Text("Account Details")) {
-                        TextField("Name", text: $name)
-                        Toggle("Off-budget account", isOn: $offbudget)
+                ScrollView {
+                    VStack(spacing: 20) {
+                        GlassCard(cornerRadius: 15) {
+                            VStack(spacing: 16) {
+                                TextField("Account Name", text: $name)
+                                    .textFieldStyle(GlassTextFieldStyle())
+                                
+                                Toggle("Off-budget account", isOn: $offbudget)
+                                    .tint(AppTheme.accent)
+                                    .font(AppTheme.Fonts.body)
+                            }
+                        }
                     }
-                    .listRowBackground(Color.primary.opacity(0.05))
+                    .padding()
                 }
-                .scrollContentBackground(.hidden)
+                .applyScrollEdgeEffect()
             }
             .navigationTitle("New Account")
             .navigationBarTitleDisplayMode(.inline)

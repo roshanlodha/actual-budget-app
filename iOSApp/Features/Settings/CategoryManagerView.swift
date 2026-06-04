@@ -44,58 +44,73 @@ struct CategoryManagerView: View {
             AppBackground()
             
             if isLoading {
-                ProgressView()
+                ProgressView().tint(AppTheme.accent)
             } else {
-                List {
-                    ForEach(groups) { group in
-                        Section(header: HStack {
-                            Text(group.name)
-                                .font(AppTheme.Fonts.subtitle)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Button {
-                                prepareAddCategory(in: group)
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(AppTheme.accent)
-                                    .font(.title3)
-                            }
-                        }) {
-                            if group.categories.isEmpty {
-                                Text("No categories in this group")
-                                    .font(AppTheme.Fonts.footnote)
-                                    .foregroundColor(.secondary)
-                                    .padding(.vertical, 4)
-                            } else {
-                                ForEach(group.categories) { cat in
-                                    Button {
-                                        prepareEditCategory(cat)
-                                    } label: {
-                                        HStack(spacing: 12) {
-                                            Image(systemName: cat.icon ?? "tag.fill")
-                                                .foregroundColor(.white)
-                                                .frame(width: 28, height: 28)
-                                                .background(Color(hex: cat.color ?? "#8D93AB"))
-                                                .clipShape(Circle())
-                                            
-                                            Text(cat.name)
-                                                .font(AppTheme.Fonts.body)
-                                                .foregroundColor(.primary)
-                                            
-                                            Spacer()
-                                            
-                                            Image(systemName: "pencil")
-                                                .foregroundColor(.secondary)
-                                                .font(.footnote)
+                ScrollView {
+                    AdaptiveGlassContainer(spacing: 24) {
+                        VStack(spacing: 24) {
+                            ForEach(groups) { group in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Text(group.name)
+                                            .font(AppTheme.Fonts.subtitle)
+                                            .foregroundColor(.primary)
+                                        Spacer()
+                                        Button {
+                                            prepareAddCategory(in: group)
+                                        } label: {
+                                            Image(systemName: "plus.circle.fill")
+                                                .foregroundColor(AppTheme.accent)
+                                                .font(.title3)
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                    
+                                    GlassCard(cornerRadius: 15) {
+                                        VStack(spacing: 14) {
+                                            if group.categories.isEmpty {
+                                                Text("No categories in this group")
+                                                    .font(AppTheme.Fonts.footnote)
+                                                    .foregroundColor(.secondary)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                            } else {
+                                                ForEach(group.categories) { cat in
+                                                    Button {
+                                                        prepareEditCategory(cat)
+                                                    } label: {
+                                                        HStack(spacing: 12) {
+                                                            Image(systemName: cat.icon ?? "tag.fill")
+                                                                .foregroundColor(.white)
+                                                                .frame(width: 28, height: 28)
+                                                                .background(Color(hex: cat.color ?? "#8D93AB"))
+                                                                .clipShape(Circle())
+                                                            
+                                                            Text(cat.name)
+                                                                .font(AppTheme.Fonts.body)
+                                                                .foregroundColor(.primary)
+                                                            
+                                                            Spacer()
+                                                            
+                                                            Image(systemName: "pencil")
+                                                                .foregroundColor(.secondary)
+                                                                .font(.footnote)
+                                                        }
+                                                    }
+                                                    
+                                                    if cat.id != group.categories.last?.id {
+                                                        Divider()
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        .listRowBackground(Color.primary.opacity(0.05))
+                        .padding()
                     }
                 }
-                .scrollContentBackground(.hidden)
+                .applyScrollEdgeEffect()
             }
         }
         .navigationTitle("Manage Categories")
@@ -124,70 +139,98 @@ struct CategoryManagerView: View {
     private func categoryEditSheet(isEdit: Bool, groupName: String) -> some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.05, green: 0.08, blue: 0.14).ignoresSafeArea()
+                AppBackground()
                 
-                VStack(spacing: 20) {
-                    Form {
-                        Section("Category Information") {
-                            TextField("Name", text: $categoryName)
-                            
-                            HStack {
-                                Text("Group")
-                                Spacer()
-                                Text(groupName)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        Section("Color") {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(colors, id: \.self) { c in
-                                        Circle()
-                                            .fill(Color(hex: c))
-                                            .frame(width: 32, height: 32)
-                                            .overlay(
-                                                Circle().stroke(categoryColor == c ? Color.white : Color.clear, lineWidth: 2)
-                                            )
-                                            .shadow(radius: categoryColor == c ? 2 : 0)
-                                            .onTapGesture { categoryColor = c }
+                ScrollView {
+                    AdaptiveGlassContainer(spacing: 20) {
+                        VStack(spacing: 20) {
+                            // Section 1: Info
+                            GlassCard(cornerRadius: 15) {
+                                VStack(spacing: 16) {
+                                    TextField("Category Name", text: $categoryName)
+                                        .textFieldStyle(GlassTextFieldStyle())
+                                    
+                                    HStack {
+                                        Text("Group")
+                                            .font(AppTheme.Fonts.body)
+                                        Spacer()
+                                        Text(groupName)
+                                            .font(AppTheme.Fonts.body)
+                                            .foregroundColor(.secondary)
                                     }
                                 }
-                                .padding(.vertical, 4)
                             }
-                        }
-                        
-                        Section("Icon") {
-                            let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
-                            LazyVGrid(columns: columns, spacing: 10) {
-                                ForEach(icons, id: \.self) { icon in
-                                    Image(systemName: icon)
-                                        .font(.title3)
-                                        .foregroundColor(categoryIcon == icon ? .white : .primary)
-                                        .frame(width: 44, height: 44)
-                                        .background(categoryIcon == icon ? Color(hex: categoryColor) : Color.primary.opacity(0.05))
-                                        .clipShape(Circle())
-                                        .onTapGesture { categoryIcon = icon }
+                            
+                            // Section 2: Color Picker
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Choose Color")
+                                    .font(AppTheme.Fonts.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal)
+                                
+                                GlassCard(cornerRadius: 15) {
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 12) {
+                                            ForEach(colors, id: \.self) { c in
+                                                Circle()
+                                                    .fill(Color(hex: c))
+                                                    .frame(width: 32, height: 32)
+                                                    .overlay(
+                                                        Circle().stroke(categoryColor == c ? Color.white : Color.clear, lineWidth: 2)
+                                                    )
+                                                    .shadow(radius: categoryColor == c ? 2 : 0)
+                                                    .onTapGesture { categoryColor = c }
+                                            }
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
                                 }
                             }
-                            .padding(.vertical, 8)
-                        }
-                        
-                        if isEdit {
-                            Section {
+                            
+                            // Section 3: Icon Grid
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Choose Icon")
+                                    .font(AppTheme.Fonts.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal)
+                                
+                                GlassCard(cornerRadius: 15) {
+                                    let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
+                                    LazyVGrid(columns: columns, spacing: 10) {
+                                        ForEach(icons, id: \.self) { icon in
+                                            Image(systemName: icon)
+                                                .font(.title3)
+                                                .foregroundColor(categoryIcon == icon ? .white : .primary)
+                                                .frame(width: 44, height: 44)
+                                                .background(categoryIcon == icon ? Color(hex: categoryColor) : Color.primary.opacity(0.05))
+                                                .clipShape(Circle())
+                                                .onTapGesture { categoryIcon = icon }
+                                        }
+                                    }
+                                    .padding(.vertical, 8)
+                                }
+                            }
+                            
+                            if isEdit {
                                 Button(role: .destructive, action: deleteCategory) {
                                     HStack {
                                         Spacer()
                                         Label("Delete Category", systemImage: "trash")
+                                            .font(AppTheme.Fonts.headline)
+                                            .foregroundColor(AppTheme.destructive)
                                         Spacer()
                                     }
                                 }
+                                .padding()
+                                .glassEffect(.regular, in: .rect(cornerRadius: 15))
                             }
                         }
+                        .padding()
                     }
-                    .scrollContentBackground(.hidden)
                 }
+                .applyScrollEdgeEffect()
             }
+            .tint(AppTheme.accent)
             .navigationTitle(isEdit ? "Edit Category" : "Add Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

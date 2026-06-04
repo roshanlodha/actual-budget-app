@@ -114,6 +114,14 @@ struct OnboardingView: View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
+                        Text("Budget Name")
+                            .font(AppTheme.Fonts.subheadline)
+                            .foregroundColor(.secondary)
+                        TextField("My Budget", text: $budgetName)
+                            .textFieldStyle(GlassTextFieldStyle())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("Currency")
                             .font(AppTheme.Fonts.subheadline)
                             .foregroundColor(.secondary)
@@ -124,10 +132,8 @@ struct OnboardingView: View {
                             }
                         }
                         .pickerStyle(.menu)
+                        .tint(AppTheme.accent)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8)
-                        .background(Color.primary.opacity(0.05))
-                        .cornerRadius(8)
                     }
                 }
             }
@@ -183,185 +189,185 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
             
             ScrollView {
-                VStack(spacing: 20) {
-                    // Standard Selection in a clean list structure
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Standard Categories")
-                            .font(AppTheme.Fonts.subtitle)
-                            .foregroundColor(.primary)
-                        
-                        VStack(spacing: 0) {
-                            ForEach(predefinedTemplates) { template in
-                                let isSelected = selectedCategories.contains(where: { $0.name == template.name })
-                                let isOther = template.name == "Other"
-                                
-                                HStack(spacing: 16) {
-                                    Image(systemName: template.icon ?? "tag.fill")
-                                        .font(.body)
-                                        .foregroundColor(Color(hex: template.color ?? "#8D93AB"))
-                                        .frame(width: 24, height: 24)
-                                    
-                                    Text(template.name)
-                                        .font(AppTheme.Fonts.body)
-                                        .foregroundColor(.primary)
-                                    
-                                    Spacer()
-                                    
-                                    if isOther {
-                                        Text("Mandatory")
-                                            .font(AppTheme.Fonts.footnote)
-                                            .foregroundColor(.secondary)
-                                            .padding(.trailing, 8)
-                                    } else {
-                                        Toggle("", isOn: Binding(
-                                            get: { isSelected },
-                                            set: { shouldSelect in
-                                                if shouldSelect {
-                                                    if !selectedCategories.contains(where: { $0.name == template.name }) {
-                                                        selectedCategories.append(template)
+                AdaptiveGlassContainer(spacing: 20) {
+                    VStack(spacing: 20) {
+                        // Standard Selection in a clean list structure
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Standard Categories")
+                                .font(AppTheme.Fonts.subtitle)
+                                .foregroundColor(.primary)
+                            
+                            GlassCard {
+                                VStack(spacing: 0) {
+                                    ForEach(predefinedTemplates) { template in
+                                        let isSelected = selectedCategories.contains(where: { $0.name == template.name })
+                                        let isOther = template.name == "Other"
+                                        
+                                        HStack(spacing: 16) {
+                                            Image(systemName: template.icon ?? "tag.fill")
+                                                .font(.body)
+                                                .foregroundColor(Color(hex: template.color ?? "#8D93AB"))
+                                                .frame(width: 24, height: 24)
+                                            
+                                            Text(template.name)
+                                                .font(AppTheme.Fonts.body)
+                                                .foregroundColor(.primary)
+                                            
+                                            Spacer()
+                                            
+                                            if isOther {
+                                                Text("Mandatory")
+                                                    .font(AppTheme.Fonts.footnote)
+                                                    .foregroundColor(.secondary)
+                                                    .padding(.trailing, 8)
+                                            } else {
+                                                Toggle("", isOn: Binding(
+                                                    get: { isSelected },
+                                                    set: { shouldSelect in
+                                                        if shouldSelect {
+                                                            if !selectedCategories.contains(where: { $0.name == template.name }) {
+                                                                selectedCategories.append(template)
+                                                            }
+                                                        } else {
+                                                            selectedCategories.removeAll(where: { $0.name == template.name })
+                                                        }
                                                     }
-                                                } else {
-                                                    selectedCategories.removeAll(where: { $0.name == template.name })
+                                                ))
+                                                .labelsHidden()
+                                                .tint(AppTheme.accent)
+                                            }
+                                        }
+                                        .padding(.vertical, 10)
+                                        
+                                        if template.id != predefinedTemplates.last?.id {
+                                            Divider()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        // Custom Categories Builder
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Create Custom Category")
+                                    .font(AppTheme.Fonts.subtitle)
+                                    .foregroundColor(.primary)
+                                
+                                HStack(spacing: 10) {
+                                    TextField("Category Name", text: $customName)
+                                        .textFieldStyle(GlassTextFieldStyle())
+                                    
+                                    Picker("", selection: $customGroup) {
+                                        ForEach(groupOptions, id: \.self) { opt in
+                                            Text(opt).tag(opt)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(AppTheme.accent)
+                                }
+                                
+                                // Color selection
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Choose Color")
+                                        .font(AppTheme.Fonts.footnote)
+                                        .foregroundColor(.secondary)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(colors, id: \.self) { c in
+                                                Circle()
+                                                    .fill(Color(hex: c))
+                                                    .frame(width: 28, height: 28)
+                                                    .overlay(
+                                                        Circle().stroke(customColor == c ? Color.white : Color.clear, lineWidth: 2)
+                                                    )
+                                                    .shadow(radius: customColor == c ? 2 : 0)
+                                                    .onTapGesture { customColor = c }
+                                            }
+                                        }
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                                
+                                // Icon selection
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Choose Icon")
+                                        .font(AppTheme.Fonts.footnote)
+                                        .foregroundColor(.secondary)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(icons, id: \.self) { icon in
+                                                Image(systemName: icon)
+                                                    .font(.body)
+                                                    .foregroundColor(customIcon == icon ? .white : .primary)
+                                                    .frame(width: 32, height: 32)
+                                                    .background(customIcon == icon ? Color(hex: customColor) : Color.primary.opacity(0.05))
+                                                    .clipShape(Circle())
+                                                    .onTapGesture { customIcon = icon }
+                                            }
+                                        }
+                                        .padding(.vertical, 2)
+                                    }
+                                }
+                                
+                                Button(action: addCustomCategory) {
+                                    Label("Add Custom Category", systemImage: "plus")
+                                        .font(AppTheme.Fonts.headline)
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(AppTheme.accent)
+                                .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                        }
+                        
+                        // Selected List preview
+                        if !selectedCategories.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Categories to Create (\(selectedCategories.count))")
+                                    .font(AppTheme.Fonts.subtitle)
+                                    .foregroundColor(.primary)
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(selectedCategories) { cat in
+                                        let isOther = cat.name == "Other"
+                                        HStack {
+                                            Image(systemName: cat.icon ?? "tag.fill")
+                                                .foregroundColor(Color(hex: cat.color ?? "#8D93AB"))
+                                                .frame(width: 24, height: 24)
+                                            
+                                            Text(cat.name)
+                                                .font(AppTheme.Fonts.body)
+                                                .foregroundColor(.primary)
+                                            
+                                            Spacer()
+                                            
+                                            Text(getGroupName(for: cat))
+                                                .font(AppTheme.Fonts.caption)
+                                                .foregroundColor(.secondary)
+                                            
+                                            if !isOther {
+                                                Button {
+                                                    selectedCategories.removeAll(where: { $0.id == cat.id })
+                                                } label: {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .foregroundColor(.secondary)
                                                 }
                                             }
-                                        ))
-                                        .labelsHidden()
-                                        .tint(AppTheme.accent)
-                                    }
-                                }
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 14)
-                                .background(Color.primary.opacity(0.03))
-                                
-                                if template.id != predefinedTemplates.last?.id {
-                                    Divider().padding(.leading, 54)
-                                }
-                            }
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    
-                    Divider()
-                    
-                    // Custom Categories Builder
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Create Custom Category")
-                                .font(AppTheme.Fonts.subtitle)
-                                .foregroundColor(.primary)
-                            
-                            HStack(spacing: 10) {
-                                TextField("Category Name", text: $customName)
-                                    .textFieldStyle(.plain)
-                                    .padding(10)
-                                    .background(Color.primary.opacity(0.05))
-                                    .cornerRadius(8)
-                                
-                                Picker("", selection: $customGroup) {
-                                    ForEach(groupOptions, id: \.self) { opt in
-                                        Text(opt).tag(opt)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                            }
-                            
-                            // Color selection
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Choose Color")
-                                    .font(AppTheme.Fonts.footnote)
-                                    .foregroundColor(.secondary)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(colors, id: \.self) { c in
-                                            Circle()
-                                                .fill(Color(hex: c))
-                                                .frame(width: 28, height: 28)
-                                                .overlay(
-                                                    Circle().stroke(customColor == c ? Color.white : Color.clear, lineWidth: 2)
-                                                )
-                                                .shadow(radius: customColor == c ? 2 : 0)
-                                                .onTapGesture { customColor = c }
                                         }
+                                        .padding(8)
+                                        .background(Color.primary.opacity(0.02))
+                                        .cornerRadius(8)
                                     }
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                            
-                            // Icon selection
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Choose Icon")
-                                    .font(AppTheme.Fonts.footnote)
-                                    .foregroundColor(.secondary)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(icons, id: \.self) { icon in
-                                            Image(systemName: icon)
-                                                .font(.body)
-                                                .foregroundColor(customIcon == icon ? .white : .primary)
-                                                .frame(width: 32, height: 32)
-                                                .background(customIcon == icon ? Color(hex: customColor) : Color.primary.opacity(0.05))
-                                                .clipShape(Circle())
-                                                .onTapGesture { customIcon = icon }
-                                        }
-                                    }
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                            
-                            Button(action: addCustomCategory) {
-                                Label("Add Custom Category", systemImage: "plus")
-                                    .font(AppTheme.Fonts.headline)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(AppTheme.accent)
-                            .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
-                    }
-                    
-                    // Selected List preview
-                    if !selectedCategories.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Categories to Create (\(selectedCategories.count))")
-                                .font(AppTheme.Fonts.subtitle)
-                                .foregroundColor(.primary)
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(selectedCategories) { cat in
-                                    let isOther = cat.name == "Other"
-                                    HStack {
-                                        Image(systemName: cat.icon ?? "tag.fill")
-                                            .foregroundColor(Color(hex: cat.color ?? "#8D93AB"))
-                                            .frame(width: 24, height: 24)
-                                        
-                                        Text(cat.name)
-                                            .font(AppTheme.Fonts.body)
-                                            .foregroundColor(.primary)
-                                        
-                                        Spacer()
-                                        
-                                        Text(getGroupName(for: cat))
-                                            .font(AppTheme.Fonts.caption)
-                                            .foregroundColor(.secondary)
-                                        
-                                        if !isOther {
-                                            Button {
-                                                selectedCategories.removeAll(where: { $0.id == cat.id })
-                                            } label: {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .padding(8)
-                                    .background(Color.primary.opacity(0.02))
-                                    .cornerRadius(8)
                                 }
                             }
                         }
                     }
                 }
             }
+            .applyScrollEdgeEffect()
             
             HStack {
                 Button(action: {

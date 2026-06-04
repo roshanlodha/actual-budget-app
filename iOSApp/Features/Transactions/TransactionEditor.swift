@@ -98,64 +98,106 @@ struct TransactionEditor: View {
     }
     
     private var formContent: some View {
-        Form {
-            Section("Account") {
-                Picker("Account", selection: $selectedAccountId) {
-                    ForEach(accounts, id: \.id) { acc in
-                        Text(acc.name + (acc.offbudget ? " (Off-Budget)" : "")).tag(acc.id)
-                    }
-                }
-            }
-            .listRowBackground(Color.primary.opacity(0.05))
-            
-            Section("Details") {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
-                
-                HStack {
-                    TextField("Amount", text: $amountString)
-                        .keyboardType(.decimalPad)
-                    
-                    Picker("Type", selection: $isNegative) {
-                        Text("Expense").tag(true)
-                        Text("Income").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 150)
-                }
-                
-                Picker("Payee", selection: $payeeMode) {
-                    Text("Choose").tag(PayeeInputMode.picker)
-                    Text("Custom").tag(PayeeInputMode.custom)
-                }
-                .pickerStyle(.segmented)
-
-                if payeeMode == .picker {
-                    Picker("Payee", selection: $selectedPayeeId) {
-                        Text("None").tag("")
-                        ForEach(payees, id: \.id) { payee in
-                            Text(payee.name).tag(payee.id)
+        ScrollView {
+            AdaptiveGlassContainer(spacing: 20) {
+                VStack(spacing: 20) {
+                    // Section 1: Account Choice
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Account")
+                            .font(AppTheme.Fonts.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                        
+                        GlassCard(cornerRadius: 15) {
+                            Picker("Account", selection: $selectedAccountId) {
+                                ForEach(accounts, id: \.id) { acc in
+                                    Text(acc.name + (acc.offbudget ? " (Off-Budget)" : "")).tag(acc.id)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(AppTheme.accent)
+                            .font(AppTheme.Fonts.body)
                         }
                     }
-                    .onChange(of: selectedPayeeId) { oldValue, newValue in
-                        selectedTransferId = payees.first(where: { $0.id == newValue })?.transfer_acct
+                    
+                    // Section 2: Details
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Details")
+                            .font(AppTheme.Fonts.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                        
+                        GlassCard(cornerRadius: 15) {
+                            VStack(spacing: 16) {
+                                DatePicker("Date", selection: $date, displayedComponents: .date)
+                                    .tint(AppTheme.accent)
+                                    .font(AppTheme.Fonts.body)
+                                
+                                Divider()
+                                
+                                HStack(spacing: 12) {
+                                    TextField("Amount", text: $amountString)
+                                        .textFieldStyle(GlassTextFieldStyle())
+                                    
+                                    Picker("Type", selection: $isNegative) {
+                                        Text("Expense").tag(true)
+                                        Text("Income").tag(false)
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .frame(width: 150)
+                                }
+                                
+                                Divider()
+                                
+                                Picker("Payee", selection: $payeeMode) {
+                                    Text("Choose").tag(PayeeInputMode.picker)
+                                    Text("Custom").tag(PayeeInputMode.custom)
+                                }
+                                .pickerStyle(.segmented)
+                                
+                                if payeeMode == .picker {
+                                    Picker("Payee", selection: $selectedPayeeId) {
+                                        Text("None").tag("")
+                                        ForEach(payees, id: \.id) { payee in
+                                            Text(payee.name).tag(payee.id)
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                    .tint(AppTheme.accent)
+                                    .font(AppTheme.Fonts.body)
+                                    .onChange(of: selectedPayeeId) { oldValue, newValue in
+                                        selectedTransferId = payees.first(where: { $0.id == newValue })?.transfer_acct
+                                    }
+                                } else {
+                                    TextField("Payee Name", text: $customPayee)
+                                        .textFieldStyle(GlassTextFieldStyle())
+                                }
+                                
+                                Divider()
+                                
+                                Picker("Category", selection: $categoryId) {
+                                    Text("Auto-Detect").tag(String?.some("auto_detect"))
+                                    Text("None").tag(String?.none)
+                                    ForEach(categoriesById.sorted { $0.value < $1.value }, id: \.key) { key, value in
+                                        Text(value).tag(String?.some(key))
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(AppTheme.accent)
+                                .font(AppTheme.Fonts.body)
+                                
+                                Divider()
+                                
+                                TextField("Notes", text: $notes)
+                                    .textFieldStyle(GlassTextFieldStyle())
+                            }
+                        }
                     }
-                } else {
-                    TextField("Payee Name", text: $customPayee)
                 }
-                
-                Picker("Category", selection: $categoryId) {
-                    Text("Auto-Detect").tag(String?.some("auto_detect"))
-                    Text("None").tag(String?.none)
-                    ForEach(categoriesById.sorted { $0.value < $1.value }, id: \.key) { key, value in
-                        Text(value).tag(String?.some(key))
-                    }
-                }
-                
-                TextField("Notes", text: $notes)
+                .padding()
             }
-            .listRowBackground(Color.primary.opacity(0.05))
         }
-        .scrollContentBackground(.hidden)
+        .applyScrollEdgeEffect()
     }
     
     private func buildTransaction() -> Transaction {

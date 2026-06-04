@@ -22,47 +22,47 @@ struct TransactionsView: View {
     var body: some View {
         ZStack {
             AppBackground()
-            if sortedTransactions.isEmpty && errorMessage == nil {
-                VStack(spacing: 16) {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("No transactions yet")
-                                .font(AppTheme.Fonts.headline)
-                                .foregroundColor(.primary)
-                            Text("Add a transaction to start building this account's history.")
-                                .font(AppTheme.Fonts.body)
-                                .foregroundStyle(.secondary)
-                             Button("Import Transactions") {
-                                 activeSheet = .importCSV
-                             }
-                             .buttonStyle(.borderedProminent)
-                             .tint(AppTheme.accent)
+            ScrollView {
+                AdaptiveGlassContainer(spacing: 12) {
+                    VStack(spacing: 12) {
+                        if sortedTransactions.isEmpty && errorMessage == nil {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("No transactions yet")
+                                        .font(AppTheme.Fonts.headline)
+                                        .foregroundColor(.primary)
+                                    Text("Add a transaction to start building this account's history.")
+                                        .font(AppTheme.Fonts.body)
+                                        .foregroundStyle(.secondary)
+                                     Button("Import Transactions") {
+                                         activeSheet = .importCSV
+                                     }
+                                     .buttonStyle(.borderedProminent)
+                                     .tint(AppTheme.accent)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(sortedTransactions, id: \.id) { tx in
+                                    TransactionRow(
+                                        transaction: tx,
+                                        accounts: accounts,
+                                        payeesById: payeesById,
+                                        categoriesById: categoriesById,
+                                        currencyCode: appState.currencyCode,
+                                        onEdit: { t in activeSheet = .edit(t) },
+                                        onDelete: { t in Task { await delete(t) } }
+                                    )
+                                    .contextMenu { contextMenuItems(for: tx) }
+                                }
+                            }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Spacer()
+                    .padding()
                 }
-                .padding()
-            } else {
-                List {
-                    ForEach(sortedTransactions, id: \.id) { tx in
-                        TransactionRow(
-                            transaction: tx,
-                            accounts: accounts,
-                            payeesById: payeesById,
-                            categoriesById: categoriesById,
-                            currencyCode: appState.currencyCode,
-                            onEdit: { t in activeSheet = .edit(t) },
-                            onDelete: { t in Task { await delete(t) } }
-                        )
-                        .contextMenu { contextMenuItems(for: tx) }
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
+            .applyScrollEdgeEffect()
         }
         .navigationTitle(account.name)
         .toolbar {
