@@ -37,7 +37,7 @@ struct TransactionsView: View {
                                      Button("Import Transactions") {
                                          activeSheet = .importCSV
                                      }
-                                     .buttonStyle(.borderedProminent)
+                                     .buttonStyle(.glassProminent)
                                      .tint(AppTheme.accent)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,7 +66,7 @@ struct TransactionsView: View {
         }
         .navigationTitle(account.name)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     activeSheet = .add
                 } label: { Image(systemName: "plus") }

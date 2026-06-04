@@ -83,7 +83,7 @@ struct AllTransactionsView: View {
         }
         .navigationTitle("All Transactions")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     activeSheet = .add
                 } label: { Image(systemName: "plus") }

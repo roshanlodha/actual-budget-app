@@ -47,6 +47,7 @@ extension Color {
 extension View {
     func applyScrollEdgeEffect() -> some View {
         self.scrollEdgeEffectStyle(.soft, for: .top)
+            .scrollContentBackground(.hidden)
     }
 }
 

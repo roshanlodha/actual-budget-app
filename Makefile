@@ -64,6 +64,22 @@ ios-unsigned: clean
 	@echo "✅ Build complete: $(FINAL_IPA)"
 	@ls -lh $(FINAL_IPA)
 
+.PHONY: macos-unsigned
+macos-unsigned: clean
+	@echo "\n--- Step 1: Building macOS app without code signing ---"
+	@$(XCODEBUILD) -project $(PROJECT_FILE) \
+		-scheme ActualAccountsMac \
+		-configuration Release \
+		-destination 'platform=macOS' \
+		-derivedDataPath $(BUILD_DIR) \
+		CODE_SIGNING_ALLOWED=$(CODE_SIGNING_ALLOWED) \
+		CODE_SIGNING_REQUIRED=$(CODE_SIGNING_REQUIRED) \
+		CODE_SIGN_IDENTITY="$(CODE_SIGN_IDENTITY)" \
+		PROVISIONING_PROFILE_SPECIFIER="$(PROVISIONING_PROFILE_SPECIFIER)" \
+		$(EXTRA_XCODEBUILD_FLAGS) \
+		build
+	@echo "✅ macOS Build complete"
+
 # --- Utility Targets ---
 
 .PHONY: clean

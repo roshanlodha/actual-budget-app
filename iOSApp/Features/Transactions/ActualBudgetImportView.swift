@@ -84,7 +84,9 @@ struct ActualBudgetImportView: View {
                 }
             }
             .navigationTitle("Import Actual Budget")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -387,11 +389,12 @@ struct ActualBudgetImportView: View {
     private func handleFileImport(result: Result<URL, Error>) {
         switch result {
         case .success(let url):
-            guard url.startAccessingSecurityScopedResource() else {
-                errorMessage = "Could not access selected file."
-                return
+            let isAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if isAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
             }
-            defer { url.stopAccessingSecurityScopedResource() }
             
             do {
                 let data = try Data(contentsOf: url)

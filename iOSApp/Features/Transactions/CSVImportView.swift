@@ -142,14 +142,20 @@ struct CSVImportView: View {
                     .padding(24)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
+                            #if os(macOS)
+                            .fill(Color(NSColor.windowBackgroundColor).opacity(0.95))
+                            #else
                             .fill(Color(UIColor.systemBackground).opacity(0.95))
+                            #endif
                             .shadow(radius: 20)
                     )
                     .padding(40)
                 }
             }
             .navigationTitle("Import CSV")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -450,10 +456,12 @@ struct CSVImportView: View {
                                 Text("Multiplier")
                                 Spacer()
                                 TextField("1.0", text: $multiplierString)
+                                    #if os(iOS)
                                     .keyboardType(.decimalPad)
+                                    #endif
                                     .frame(width: 80)
                                     .multilineTextAlignment(.trailing)
-                                    .textFieldStyle(.roundedBorder)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
                             }
                         }
                     }
@@ -984,11 +992,12 @@ struct CSVImportView: View {
     private func handleFileImport(result: Result<URL, Error>) {
         switch result {
         case .success(let url):
-            guard url.startAccessingSecurityScopedResource() else {
-                errorMessage = "Could not access selected file."
-                return
+            let isAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if isAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
             }
-            defer { url.stopAccessingSecurityScopedResource() }
             
             do {
                 let data = try Data(contentsOf: url)

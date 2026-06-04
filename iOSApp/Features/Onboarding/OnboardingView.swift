@@ -150,7 +150,7 @@ struct OnboardingView: View {
                 .font(AppTheme.Fonts.headline)
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .tint(AppTheme.accent)
             
             HStack {
@@ -176,7 +176,7 @@ struct OnboardingView: View {
                 .font(AppTheme.Fonts.headline)
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .tint(AppTheme.accent)
         }
     }
@@ -317,7 +317,7 @@ struct OnboardingView: View {
                                         .font(AppTheme.Fonts.headline)
                                         .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(.glass)
                                 .tint(AppTheme.accent)
                                 .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             }
@@ -379,7 +379,7 @@ struct OnboardingView: View {
                     }
                     .font(AppTheme.Fonts.headline)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 
                 Spacer()
                 
@@ -388,7 +388,7 @@ struct OnboardingView: View {
                         .font(AppTheme.Fonts.headline)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .tint(AppTheme.accent)
                 .disabled(selectedCategories.isEmpty || !selectedCategories.contains(where: { $0.name == "Other" }))
             }

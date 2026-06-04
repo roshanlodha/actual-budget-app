@@ -3,6 +3,7 @@ options:
   minimumXcodeGenVersion: 2.39.0
   deploymentTarget:
     iOS: "26.0"
+    macOS: "26.0"
 settings:
   base:
     SWIFT_VERSION: 5.10
@@ -14,6 +15,13 @@ schemes:
     build:
       targets:
         ActualAccounts: all
+    run:
+      config: Debug
+      debugEnabled: false
+  ActualAccountsMac:
+    build:
+      targets:
+        ActualAccountsMac: all
     run:
       config: Debug
       debugEnabled: false
@@ -52,4 +60,34 @@ targets:
         INFOPLIST_FILE: Resources/Info.plist
         MARKETING_VERSION: $(MARKETING_VERSION)
         CURRENT_PROJECT_VERSION: $(CURRENT_PROJECT_VERSION)
+
+  ActualAccountsMac:
+    type: application
+    platform: macOS
+    configFiles:
+      Debug: Resources/Version.xcconfig
+      Release: Resources/Version.xcconfig
+    sources:
+      - path: App
+      - path: Features
+      - path: UI
+      - path: Resources
+        excludes: [README.md, Info.plist, ActualAccounts.entitlements]
+      - path: Shared
+      - path: Data
+    info:
+      path: Resources/InfoMac.plist
+      properties:
+        CFBundleShortVersionString: '$(MARKETING_VERSION)'
+        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)'
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.roshanlodha.actual.accounts.mac
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        PROVISIONING_PROFILE_SPECIFIER: ""
+        INFOPLIST_FILE: Resources/InfoMac.plist
+        MARKETING_VERSION: $(MARKETING_VERSION)
+        CURRENT_PROJECT_VERSION: $(CURRENT_PROJECT_VERSION)
+
 

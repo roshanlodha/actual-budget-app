@@ -8,6 +8,13 @@ struct ActualAccountsApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
+                #if os(macOS)
+                .frame(minWidth: 1000, minHeight: 650)
+                #endif
         }
+        #if os(macOS)
+        .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified)
+        #endif
     }
 }

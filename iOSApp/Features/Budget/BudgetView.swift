@@ -42,12 +42,21 @@ struct BudgetView: View {
         }
         .navigationTitle(monthTitle())
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .navigationBarLeading) {
                 Button { moveMonth(-1) } label: { Image(systemName: "chevron.left") }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { moveMonth(+1) } label: { Image(systemName: "chevron.right") }
             }
+            #else
+            ToolbarItem(placement: .navigation) {
+                Button { moveMonth(-1) } label: { Image(systemName: "chevron.left") }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button { moveMonth(+1) } label: { Image(systemName: "chevron.right") }
+            }
+            #endif
         }
         .task { await loadAll() }
         .alert("Budget Amount", isPresented: Binding(
@@ -55,7 +64,9 @@ struct BudgetView: View {
             set: { if !$0 { editingCategory = nil } }
         )) {
             TextField("Amount", text: $editBudgetString)
+                #if os(iOS)
                 .keyboardType(.decimalPad)
+                #endif
             Button("Cancel", role: .cancel) { editingCategory = nil }
             Button("Save") {
                 if let cat = editingCategory {

@@ -84,7 +84,9 @@ struct TransactionEditor: View {
                 }
             }
             .navigationTitle(transaction == nil ? "New Transaction" : "Edit Transaction")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save", action: save).bold() }

@@ -3,6 +3,7 @@ import SQLite3
 
 public final class SQLiteDB {
     private var db: OpaquePointer?
+    private let lock = NSRecursiveLock()
     private let transientDestructor = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
     
     public init(path: String) throws {
@@ -15,12 +16,16 @@ public final class SQLiteDB {
     }
     
     deinit {
+        lock.lock()
+        defer { lock.unlock() }
         if let db = db {
             sqlite3_close(db)
         }
     }
     
     public func execute(_ sql: String, arguments: [Any] = []) throws {
+        lock.lock()
+        defer { lock.unlock() }
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) != SQLITE_OK {
             throw DatabaseError.prepareFailed(errorMessage())
@@ -36,6 +41,8 @@ public final class SQLiteDB {
     }
     
     public func query(_ sql: String, arguments: [Any] = []) throws -> [[String: Any]] {
+        lock.lock()
+        defer { lock.unlock() }
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) != SQLITE_OK {
             throw DatabaseError.prepareFailed(errorMessage())
@@ -75,6 +82,8 @@ public final class SQLiteDB {
     }
     
     public func transaction<T>(_ block: () throws -> T) throws -> T {
+        lock.lock()
+        defer { lock.unlock() }
         try execute("BEGIN TRANSACTION;")
         do {
             let result = try block()

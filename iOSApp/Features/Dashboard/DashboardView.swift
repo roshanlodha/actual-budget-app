@@ -462,7 +462,9 @@ struct DashboardView: View {
                                                                 .frame(width: 44, height: 44)
                                                         } else {
                                                             Button(action: {
+                                                                #if os(iOS)
                                                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                                                #endif
                                                                 viewModel.selectDate(day)
                                                             }) {
                                                                 VStack(spacing: 2) {
@@ -505,7 +507,9 @@ struct DashboardView: View {
             .applyScrollEdgeEffect()
         }
         .navigationTitle("Dashboard")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .task {
             if let repo = appState.repository {
                 viewModel.configure(repository: repo)
@@ -541,9 +545,11 @@ struct DashboardView: View {
                     }
                 }
                 .navigationTitle(viewModel.selectedDateLabel)
+                #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
+                #endif
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .confirmationAction) {
                         Button("Done") {
                             viewModel.showDetailSheet = false
                         }

@@ -62,7 +62,7 @@ struct AccountsView: View {
         }
         .navigationTitle("Accounts")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .primaryAction) {
                 Button { showingCreate = true } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
@@ -171,7 +171,7 @@ struct AccountsView: View {
                 Button("Create your first account") {
                     showingCreate = true
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .tint(AppTheme.accent)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -207,7 +207,9 @@ private struct CreateAccountSheet: View {
                 .applyScrollEdgeEffect()
             }
             .navigationTitle("New Account")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

@@ -232,7 +232,9 @@ struct CategoryManagerView: View {
             }
             .tint(AppTheme.accent)
             .navigationTitle(isEdit ? "Edit Category" : "Add Category")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

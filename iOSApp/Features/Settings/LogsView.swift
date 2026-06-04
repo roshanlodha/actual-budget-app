@@ -1,9 +1,7 @@
 import SwiftUI
-import UIKit
 
 struct LogsView: View {
     @State private var logText: String = ""
-    @State private var isSharing: Bool = false
 
     var body: some View {
         ZStack {
@@ -41,9 +39,7 @@ struct LogsView: View {
                             .strokeBorder(AppTheme.destructive.opacity(0.3), lineWidth: 1)
                     )
 
-                    Button {
-                        isSharing = true
-                    } label: {
+                    ShareLink(item: AppLogger.shared.logFileURL) {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
                             Text("Share")
@@ -56,6 +52,7 @@ struct LogsView: View {
                     .background(AppTheme.accent)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .shadow(color: AppTheme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
@@ -63,20 +60,7 @@ struct LogsView: View {
         }
         .navigationTitle("Logs")
         .onAppear { logText = AppLogger.shared.readLogText() }
-        .sheet(isPresented: $isSharing) {
-            ShareSheet(activityItems: [AppLogger.shared.logFileURL])
-        }
     }
-}
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 
