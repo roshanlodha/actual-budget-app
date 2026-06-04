@@ -35,9 +35,7 @@ public final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(selectedBudgetDisplayName, forKey: Keys.selectedBudgetDisplayName) }
     }
     
-    @Published var currencyCode: String {
-        didSet { UserDefaults.standard.set(currencyCode, forKey: Keys.currencyCode) }
-    }
+    @Published var currencyCode: String = "USD"
     
     
     @Published var onboardingState: OnboardingState = .noBudgetSelected
@@ -47,7 +45,7 @@ public final class AppState: ObservableObject {
 
     
     public init() {
-        self.currencyCode = UserDefaults.standard.string(forKey: Keys.currencyCode) ?? Locale.current.currency?.identifier ?? "USD"
+        self.currencyCode = "USD"
 
         self.selectedBudgetDisplayName = UserDefaults.standard.string(forKey: Keys.selectedBudgetDisplayName) ?? ""
         

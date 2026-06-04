@@ -4,10 +4,10 @@ struct CurrencyFormatter {
     static let shared = CurrencyFormatter()
     private init() {}
 
-    func format(_ amount: Int, currencyCode: String) -> String {
+    func format(_ amount: Int, currencyCode: String = "USD") -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
+        formatter.currencyCode = "USD"
         formatter.minimumFractionDigits = 2
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSNumber(value: Double(amount) / 100.0)) ?? "\(amount)"

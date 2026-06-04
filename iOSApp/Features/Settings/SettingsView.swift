@@ -107,25 +107,7 @@ struct SettingsView: View {
                             }
                         }
                         
-                        // Section 3: Preferences
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Preferences")
-                                .font(AppTheme.Fonts.subheadline)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal)
-                            
-                            GlassCard(cornerRadius: 15) {
-                                Picker("Currency", selection: $appState.currencyCode) {
-                                    ForEach(CurrencyFormatter.supportedCurrencies, id: \.0) { code, name in
-                                        Text("\(code) - \(name)").tag(code)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .tint(AppTheme.accent)
-                                .font(AppTheme.Fonts.body)
-                            }
-                        }
-                        
+
                         // Section 4: Logs
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Logs")

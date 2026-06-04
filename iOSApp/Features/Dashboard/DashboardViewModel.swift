@@ -239,19 +239,23 @@ public final class DashboardViewModel: ObservableObject {
                 }
             }
             
-            // Current month category breakdown for mini chart (sorted descending)
-            let currentMonthKey = String(format: "%04d-%02d", currentYear, currentMonthInt)
-            let currentMonthTxs = filteredTransactions.filter { $0.date.hasPrefix(currentMonthKey) }
-            var currentMonthCategoryTotals: [String: Int] = [:]
+            // Selected navigated month category breakdown for chart (sorted descending)
+            let targetComps = calendar.dateComponents([.year, .month], from: targetMonthDate)
+            let targetYear = targetComps.year ?? currentYear
+            let targetMonth = targetComps.month ?? 1
+            let targetMonthKey = String(format: "%04d-%02d", targetYear, targetMonth)
             
-            for tx in currentMonthTxs {
+            let selectedMonthTxs = filteredTransactions.filter { $0.date.hasPrefix(targetMonthKey) }
+            var selectedMonthCategoryTotals: [String: Int] = [:]
+            
+            for tx in selectedMonthTxs {
                 if !isIncomeTransaction(tx) {
                     let catName = mappedCategoriesById[tx.category ?? ""]?.name ?? "Uncategorized"
-                    currentMonthCategoryTotals[catName, default: 0] += tx.amount ?? 0
+                    selectedMonthCategoryTotals[catName, default: 0] += tx.amount ?? 0
                 }
             }
             
-            let sortedBreakdown = currentMonthCategoryTotals
+            let sortedBreakdown = selectedMonthCategoryTotals
                 .map { CategoryExpense(category: $0.key, amount: $0.value < 0 ? Double(abs($0.value)) / 100.0 : 0.0) }
                 .filter { $0.amount > 0 }
                 .sorted { $0.amount > $1.amount }

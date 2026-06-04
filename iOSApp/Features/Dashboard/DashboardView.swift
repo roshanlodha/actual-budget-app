@@ -15,16 +15,60 @@ struct DashboardView: View {
             ScrollView {
                 AdaptiveGlassContainer(spacing: 20) {
                     VStack(spacing: 20) {
+                        // Month Selector Header at top of Dashboard content
+                        HStack {
+                            Button(action: {
+                                viewModel.calendarMonthOffset -= 1
+                                Task {
+                                    await viewModel.loadData()
+                                }
+                            }) {
+                                Image(systemName: "chevron.left")
+                                    .font(.title3.bold())
+                                    .foregroundColor(AppTheme.accent)
+                                    .padding(10)
+                                    .background(Circle().fill(Color.primary.opacity(0.06)))
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Spacer()
+                            
+                            if let activeMonth = viewModel.calendarMonths.first {
+                                Text(activeMonth.monthName)
+                                    .font(AppTheme.Fonts.title)
+                                    .foregroundColor(.primary)
+                            } else {
+                                Text("Select Month")
+                                    .font(AppTheme.Fonts.title)
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                viewModel.calendarMonthOffset += 1
+                                Task {
+                                    await viewModel.loadData()
+                                }
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .font(.title3.bold())
+                                    .foregroundColor(AppTheme.accent)
+                                    .padding(10)
+                                    .background(Circle().fill(Color.primary.opacity(0.06)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
                         // Section 1: Summary Stat Cards
                         HStack(spacing: 16) {
-                            // Card A: Expenses
+                            // Card A: Average Expenses
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Monthly Expenses")
+                                    Text("Average Expenses")
                                         .font(AppTheme.Fonts.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Text(viewModel.dateRangeLabel)
-                                        .font(AppTheme.Fonts.caption)
                                         .foregroundColor(.secondary)
                                     
                                     if viewModel.isLoading {
@@ -37,19 +81,21 @@ struct DashboardView: View {
                                             .minimumScaleFactor(0.5)
                                             .lineLimit(1)
                                             .padding(.top, 4)
+                                        
+                                        Text("YTD: \(formatMoney(viewModel.ytdExpenseTotal))")
+                                            .font(AppTheme.Fonts.caption)
+                                            .foregroundColor(.secondary)
+                                            .padding(.top, 2)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                             }
                             
-                            // Card B: Income
+                            // Card B: Average Income
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Monthly Income")
+                                    Text("Average Income")
                                         .font(AppTheme.Fonts.subheadline)
-                                        .foregroundColor(.secondary)
-                                    Text(viewModel.dateRangeLabel)
-                                        .font(AppTheme.Fonts.caption)
                                         .foregroundColor(.secondary)
                                     
                                     if viewModel.isLoading {
@@ -62,6 +108,11 @@ struct DashboardView: View {
                                             .minimumScaleFactor(0.5)
                                             .lineLimit(1)
                                             .padding(.top, 4)
+                                        
+                                        Text("YTD: \(formatMoney(viewModel.ytdIncomeTotal))")
+                                            .font(AppTheme.Fonts.caption)
+                                            .foregroundColor(.secondary)
+                                            .padding(.top, 2)
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -69,153 +120,8 @@ struct DashboardView: View {
                         }
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal)
-                        .padding(.top, 8)
                         
-                        // Section 2: Monthly Expenses Bar Chart
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Monthly Expenses")
-                                    .font(AppTheme.Fonts.headline)
-                                Text("Year to date")
-                                    .font(AppTheme.Fonts.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                if viewModel.isLoading {
-                                    HStack {
-                                        Spacer()
-                                        ProgressView()
-                                        Spacer()
-                                    }
-                                    .frame(height: 200)
-                                } else if viewModel.perMonthExpenseBreakdown.isEmpty || (viewModel.perMonthExpenseBreakdown.count == 1 && viewModel.perMonthExpenseBreakdown[0].category.isEmpty) {
-                                    emptyStateView(title: "No Data", systemImage: "chart.bar.fill", description: "No expenses recorded for this year yet.")
-                                        .frame(height: 200)
-                                } else {
-                                    Chart(viewModel.perMonthExpenseBreakdown) { item in
-                                        if !item.category.isEmpty {
-                                            BarMark(
-                                                x: .value("Month", item.monthLabel),
-                                                y: .value("Amount", item.amount)
-                                            )
-                                            .foregroundStyle(by: .value("Category", item.category))
-                                            .accessibilityLabel("\(item.monthLabel) \(item.category) \(formatMoney(Int(item.amount * 100)))")
-                                        } else {
-                                            BarMark(
-                                                x: .value("Month", item.monthLabel),
-                                                y: .value("Amount", 0.0)
-                                            )
-                                            .foregroundStyle(.clear)
-                                        }
-                                    }
-                                    .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
-                                    .chartXAxis {
-                                        AxisMarks(values: .automatic) { value in
-                                            AxisValueLabel()
-                                        }
-                                    }
-                                    .chartLegend(.hidden)
-                                    .animation(reduceMotion ? nil : .spring(), value: viewModel.perMonthExpenseBreakdown)
-                                    .frame(height: 200)
-                                    
-                                    // Custom scrollable legend that only lists categories with actual expenses
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 12) {
-                                            ForEach(Array(viewModel.categoryColorMap.keys.sorted()), id: \.self) { catName in
-                                                if viewModel.perMonthExpenseBreakdown.contains(where: { $0.category == catName && $0.amount > 0 }) {
-                                                    HStack(spacing: 4) {
-                                                        Circle()
-                                                            .fill(viewModel.categoryColorMap[catName] ?? .gray)
-                                                            .frame(width: 8, height: 8)
-                                                        Text(catName)
-                                                            .font(AppTheme.Fonts.caption)
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        .padding(.horizontal, 4)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // Section 3: Cash Flow Card
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .top) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Cash Flow")
-                                            .font(AppTheme.Fonts.headline)
-                                        Text(viewModel.dateRangeLabel)
-                                            .font(AppTheme.Fonts.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    if viewModel.isLoading {
-                                        ProgressView()
-                                    } else {
-                                        let isNetPositive = viewModel.cashFlowNet >= 0
-                                        let sign = isNetPositive ? "+" : ""
-                                        Text("\(sign)\(formatMoney(viewModel.cashFlowNet))")
-                                            .font(AppTheme.Fonts.body.monospacedDigit())
-                                            .foregroundColor(isNetPositive ? AppTheme.positive : AppTheme.destructive)
-                                    }
-                                }
-                                
-                                if viewModel.isLoading {
-                                    ProgressView()
-                                        .frame(height: 80)
-                                } else {
-                                    VStack(spacing: 8) {
-                                        let maxTotal = max(viewModel.ytdExpenseTotal, viewModel.ytdIncomeTotal)
-                                        let expenseRatio = maxTotal > 0 ? Double(viewModel.ytdExpenseTotal) / Double(maxTotal) : 0.0
-                                        let incomeRatio = maxTotal > 0 ? Double(viewModel.ytdIncomeTotal) / Double(maxTotal) : 0.0
-                                        
-                                        // Expenses bar
-                                        VStack(spacing: 4) {
-                                            HStack {
-                                                Text("Expenses")
-                                                    .font(AppTheme.Fonts.caption)
-                                                    .foregroundColor(.secondary)
-                                                Spacer()
-                                                Text(formatMoney(viewModel.ytdExpenseTotal))
-                                                    .font(AppTheme.Fonts.caption)
-                                                    .monospacedDigit()
-                                            }
-                                            GeometryReader { geo in
-                                                RoundedRectangle(cornerRadius: 4)
-                                                    .fill(AppTheme.destructive)
-                                                    .frame(width: geo.size.width * CGFloat(expenseRatio), height: 8)
-                                            }
-                                            .frame(height: 8)
-                                        }
-                                        
-                                        // Income bar
-                                        VStack(spacing: 4) {
-                                            HStack {
-                                                Text("Income")
-                                                    .font(AppTheme.Fonts.caption)
-                                                    .foregroundColor(.secondary)
-                                                Spacer()
-                                                Text(formatMoney(viewModel.ytdIncomeTotal))
-                                                    .font(AppTheme.Fonts.caption)
-                                                    .monospacedDigit()
-                                            }
-                                            GeometryReader { geo in
-                                                RoundedRectangle(cornerRadius: 4)
-                                                    .fill(AppTheme.positive)
-                                                    .frame(width: geo.size.width * CGFloat(incomeRatio), height: 8)
-                                            }
-                                            .frame(height: 8)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        
-                        // Section 4: This Month Mini Chart (Pie/Donut)
+                        // Section 2: Month Expenses Mini Chart (Pie/Donut)
                         GlassCard {
                             VStack(alignment: .leading, spacing: 16) {
                                 Text("Month Expenses")
@@ -269,10 +175,6 @@ struct DashboardView: View {
                                                     .foregroundColor(.primary)
                                                     .minimumScaleFactor(0.5)
                                                     .lineLimit(1)
-                                                
-                                                Text("Selected")
-                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                                                    .foregroundColor(.secondary)
                                             } else {
                                                 Text("Total")
                                                     .font(AppTheme.Fonts.caption)
@@ -314,58 +216,12 @@ struct DashboardView: View {
                                             }
                                         }
                                     }
-                                    
-                                    // Interactive Legend Pills
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
-                                            ForEach(viewModel.currentMonthCategoryBreakdown) { item in
-                                                let isSelected = selectedCategoryName == item.category
-                                                let catColor = viewModel.categoryColorMap[item.category] ?? .gray
-                                                
-                                                Button {
-                                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                                                        if isSelected {
-                                                            selectedCategoryName = nil
-                                                            selectedAngle = nil
-                                                        } else {
-                                                            selectedCategoryName = item.category
-                                                            selectedAngle = findAngleForCategory(item.category)
-                                                        }
-                                                    }
-                                                } label: {
-                                                    HStack(spacing: 6) {
-                                                        Circle()
-                                                            .fill(catColor)
-                                                            .frame(width: 8, height: 8)
-                                                        
-                                                        Text(item.category)
-                                                            .font(AppTheme.Fonts.caption)
-                                                            .foregroundColor(isSelected ? .white : .primary)
-                                                    }
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 6)
-                                                    .background(
-                                                        isSelected ? 
-                                                        AppTheme.accent : 
-                                                        Color.primary.opacity(0.06)
-                                                    )
-                                                    .clipShape(Capsule())
-                                                    .overlay(
-                                                        Capsule()
-                                                            .stroke(isSelected ? AppTheme.accent : Color.primary.opacity(0.12), lineWidth: 1)
-                                                    )
-                                                }
-                                                .buttonStyle(.plain)
-                                            }
-                                        }
-                                        .padding(.horizontal, 4)
-                                    }
                                 }
                             }
                         }
                         .padding(.horizontal)
                         
-                        // Section 5: Transaction Calendar
+                        // Section 3: Transaction Calendar
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Transaction Calendar")
                                 .font(AppTheme.Fonts.subtitle)
@@ -387,35 +243,9 @@ struct DashboardView: View {
                                             VStack(alignment: .leading, spacing: 12) {
                                                 // Header
                                                 HStack {
-                                                    Button(action: {
-                                                        viewModel.calendarMonthOffset -= 1
-                                                        Task {
-                                                            await viewModel.loadData()
-                                                        }
-                                                    }) {
-                                                        Image(systemName: "chevron.left")
-                                                            .font(.body)
-                                                            .foregroundColor(AppTheme.accent)
-                                                            .padding(.trailing, 8)
-                                                    }
-                                                    .buttonStyle(.plain)
-                                                    
-                                                    Text(month.monthName)
+                                                    Text("Day Grid")
                                                         .font(AppTheme.Fonts.subheadline)
                                                         .bold()
-                                                    
-                                                    Button(action: {
-                                                        viewModel.calendarMonthOffset += 1
-                                                        Task {
-                                                            await viewModel.loadData()
-                                                        }
-                                                    }) {
-                                                        Image(systemName: "chevron.right")
-                                                            .font(.body)
-                                                            .foregroundColor(AppTheme.accent)
-                                                            .padding(.leading, 8)
-                                                    }
-                                                    .buttonStyle(.plain)
                                                     
                                                     Spacer()
                                                     HStack(spacing: 8) {
