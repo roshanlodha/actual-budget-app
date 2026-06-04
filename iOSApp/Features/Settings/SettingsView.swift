@@ -15,12 +15,6 @@ struct SettingsView: View {
             List {
                 Section("Active Budget") {
                     HStack {
-                        Text("Name")
-                        Spacer()
-                        Text(appState.selectedBudgetDisplayName)
-                            .foregroundColor(.secondary)
-                    }
-                    HStack {
                         Text("ID")
                         Spacer()
                         Text(appState.selectedBudgetID ?? "Unknown")

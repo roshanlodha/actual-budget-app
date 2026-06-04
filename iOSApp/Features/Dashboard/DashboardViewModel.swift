@@ -56,6 +56,7 @@ public final class DashboardViewModel: ObservableObject {
     @Published public var currentMonthCategoryBreakdown: [CategoryExpense] = []
     
     // Calendar Data
+    @Published public var calendarMonthOffset: Int = 0
     @Published public var calendarMonths: [CalendarMonthData] = []
     
     // Repository objects mapped for the View
@@ -102,7 +103,18 @@ public final class DashboardViewModel: ObservableObject {
             let incomeCategoryIds = Set(fetchedCategories.filter { $0.is_income == true }.map { $0.id })
             
             // Generate category colors map
-            let palette: [Color] = [.teal, .orange, .red, .blue, .purple, .gray, .pink, .yellow, .indigo, .mint]
+            let palette: [Color] = [
+                Color(red: 0.18, green: 0.50, blue: 0.93), // Premium Blue
+                Color(red: 0.95, green: 0.60, blue: 0.18), // Amber/Orange
+                Color(red: 0.10, green: 0.74, blue: 0.61), // Mint/Teal
+                Color(red: 0.58, green: 0.27, blue: 0.85), // Premium Purple
+                Color(red: 0.92, green: 0.30, blue: 0.26), // Coral Red
+                Color(red: 0.18, green: 0.80, blue: 0.44), // Emerald Green
+                Color(red: 0.90, green: 0.49, blue: 0.13), // Bronze
+                Color(red: 0.20, green: 0.20, blue: 0.20), // Charcoal
+                Color(red: 0.60, green: 0.60, blue: 0.60), // Mid Gray
+                Color(red: 0.90, green: 0.29, blue: 0.58)  // Rose Pink
+            ]
             var tempColorMap: [String: Color] = [:]
             for (index, cat) in fetchedCategories.enumerated() {
                 tempColorMap[cat.name] = palette[index % palette.count]
@@ -123,7 +135,12 @@ public final class DashboardViewModel: ObservableObject {
                 throw NSError(domain: "DashboardViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to construct calendar start date"])
             }
             
-            let queryStartDate = min(jan1, startOfThreeMonthsAgo)
+            let targetMonthDate = calendar.date(byAdding: .month, value: calendarMonthOffset, to: now) ?? now
+            guard let navigatedMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: targetMonthDate)) else {
+                throw NSError(domain: "DashboardViewModel", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to construct navigated calendar start date"])
+            }
+            
+            let queryStartDate = min(jan1, min(startOfThreeMonthsAgo, navigatedMonthStart))
             let queryStartDateString = formatDatePOSIX(queryStartDate)
             
             let allTransactions = try await repository.fetchAllTransactions(since: queryStartDateString)
@@ -200,22 +217,25 @@ public final class DashboardViewModel: ObservableObject {
                     }
                 }
                 
-                if categoryTotals.isEmpty {
+                var addedAny = false
+                for (catName, total) in categoryTotals {
+                    if total < 0 {
+                        monthlyBreakdown.append(MonthlyExpenseBarData(
+                            monthLabel: shortMonthNames[monthIdx - 1],
+                            monthIndex: monthIdx,
+                            category: catName,
+                            amount: Double(abs(total)) / 100.0
+                        ))
+                        addedAny = true
+                    }
+                }
+                if !addedAny {
                     monthlyBreakdown.append(MonthlyExpenseBarData(
                         monthLabel: shortMonthNames[monthIdx - 1],
                         monthIndex: monthIdx,
                         category: "",
                         amount: 0.0
                     ))
-                } else {
-                    for (catName, total) in categoryTotals {
-                        monthlyBreakdown.append(MonthlyExpenseBarData(
-                            monthLabel: shortMonthNames[monthIdx - 1],
-                            monthIndex: monthIdx,
-                            category: catName,
-                            amount: total < 0 ? Double(abs(total)) / 100.0 : 0.0
-                        ))
-                    }
                 }
             }
             
@@ -236,9 +256,9 @@ public final class DashboardViewModel: ObservableObject {
                 .filter { $0.amount > 0 }
                 .sorted { $0.amount > $1.amount }
             
-            // Calendar calculations (current month only)
+            // Calendar calculations (navigated month only)
             var generatedMonths: [CalendarMonthData] = []
-            for offset in 0...0 {
+            for offset in calendarMonthOffset...calendarMonthOffset {
                 guard let monthDate = calendar.date(byAdding: .month, value: offset, to: now) else { continue }
                 
                 let comps = calendar.dateComponents([.year, .month], from: monthDate)

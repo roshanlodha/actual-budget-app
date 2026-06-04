@@ -5,6 +5,7 @@ struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = DashboardViewModel()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var selectedAngle: Double? = nil
 
     var body: some View {
         ScrollView {
@@ -32,7 +33,7 @@ struct DashboardView: View {
                                 .padding(.top, 4)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding()
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
@@ -59,12 +60,13 @@ struct DashboardView: View {
                                 .padding(.top, 4)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding()
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
                     .shadow(radius: 4)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 
@@ -109,8 +111,28 @@ struct DashboardView: View {
                                 AxisValueLabel()
                             }
                         }
+                        .chartLegend(.hidden)
                         .animation(reduceMotion ? nil : .spring(), value: viewModel.perMonthExpenseBreakdown)
                         .frame(height: 200)
+                        
+                        // Custom scrollable legend that only lists categories with actual expenses
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(Array(viewModel.categoryColorMap.keys.sorted()), id: \.self) { catName in
+                                    if viewModel.perMonthExpenseBreakdown.contains(where: { $0.category == catName && $0.amount > 0 }) {
+                                        HStack(spacing: 4) {
+                                            Circle()
+                                                .fill(viewModel.categoryColorMap[catName] ?? .gray)
+                                                .frame(width: 8, height: 8)
+                                            Text(catName)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                        }
                     }
                 }
                 .padding()
@@ -196,11 +218,17 @@ struct DashboardView: View {
                 .shadow(radius: 4)
                 .padding(.horizontal)
                 
-                // Section 4: This Month Mini Chart
+                // Section 4: This Month Mini Chart (Pie/Donut)
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Month Expenses")
-                        .font(.subheadline)
-                        .bold()
+                    if let selected = selectedCategory {
+                        Text("Month Expenses: \(selected.category) (\(formatMoney(Int(selected.amount * 100))))")
+                            .font(.subheadline)
+                            .bold()
+                    } else {
+                        Text("Month Expenses")
+                            .font(.subheadline)
+                            .bold()
+                    }
                     Text("This month")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -211,24 +239,26 @@ struct DashboardView: View {
                             ProgressView()
                             Spacer()
                         }
-                        .frame(height: 100)
+                        .frame(height: 140)
                     } else if viewModel.currentMonthCategoryBreakdown.isEmpty {
                         emptyStateView(title: "No Expenses", systemImage: "chart.pie", description: "No expenses recorded this month.")
-                            .frame(height: 100)
+                            .frame(height: 140)
                     } else {
                         Chart(viewModel.currentMonthCategoryBreakdown) { item in
-                            BarMark(
-                                x: .value("Category", item.category),
-                                y: .value("Amount", item.amount)
+                            SectorMark(
+                                angle: .value("Amount", item.amount),
+                                innerRadius: .ratio(0.6),
+                                angularInset: 1.5
                             )
                             .foregroundStyle(by: .value("Category", item.category))
+                            .opacity(selectedCategory == nil || selectedCategory?.category == item.category ? 1.0 : 0.4)
                             .accessibilityLabel("\(item.category) \(formatMoney(Int(item.amount * 100)))")
                         }
                         .chartForegroundStyleScale(domain: Array(viewModel.categoryColorMap.keys), range: Array(viewModel.categoryColorMap.values))
-                        .chartXScale(domain: viewModel.currentMonthCategoryBreakdown.map { $0.category })
+                        .chartAngleSelection(value: $selectedAngle)
                         .chartLegend(.hidden)
                         .animation(reduceMotion ? nil : .spring(), value: viewModel.currentMonthCategoryBreakdown)
-                        .frame(height: 100)
+                        .frame(height: 140)
                     }
                 }
                 .padding()
@@ -258,9 +288,36 @@ struct DashboardView: View {
                                 VStack(alignment: .leading, spacing: 12) {
                                     // Header
                                     HStack {
+                                        Button(action: {
+                                            viewModel.calendarMonthOffset -= 1
+                                            Task {
+                                                await viewModel.loadData()
+                                            }
+                                        }) {
+                                            Image(systemName: "chevron.left")
+                                                .font(.body)
+                                                .foregroundColor(.accentColor)
+                                                .padding(.trailing, 8)
+                                        }
+                                        .buttonStyle(.plain)
+                                        
                                         Text(month.monthName)
                                             .font(.subheadline)
                                             .bold()
+                                        
+                                        Button(action: {
+                                            viewModel.calendarMonthOffset += 1
+                                            Task {
+                                                await viewModel.loadData()
+                                            }
+                                        }) {
+                                            Image(systemName: "chevron.right")
+                                                .font(.body)
+                                                .foregroundColor(.accentColor)
+                                                .padding(.leading, 8)
+                                        }
+                                        .buttonStyle(.plain)
+                                        
                                         Spacer()
                                         HStack(spacing: 8) {
                                             Text("↑ \(formatMoney(month.totalIncome))")
@@ -310,7 +367,7 @@ struct DashboardView: View {
                                                     .frame(width: 44, height: 44)
                                                     .background(
                                                         RoundedRectangle(cornerRadius: 8)
-                                                            .fill(dayBackground(day))
+                                                            .fill(dayBackground(day, in: month))
                                                     )
                                                 }
                                                 .buttonStyle(.plain)
@@ -381,15 +438,38 @@ struct DashboardView: View {
         }
     }
 
+    private var selectedCategory: CategoryExpense? {
+        guard let selectedAngle = selectedAngle else { return nil }
+        var cumulativeSum = 0.0
+        for item in viewModel.currentMonthCategoryBreakdown {
+            cumulativeSum += item.amount
+            if selectedAngle <= cumulativeSum {
+                return item
+            }
+        }
+        return nil
+    }
+
     private func formatMoney(_ amount: Int) -> String {
         return CurrencyFormatter.shared.format(amount, currencyCode: appState.currencyCode)
     }
 
-    private func dayBackground(_ day: CalendarDayData) -> Color {
-        if day.income == 0 && day.expense == 0 {
+    private func dayBackground(_ day: CalendarDayData, in month: CalendarMonthData) -> Color {
+        if day.isPadding || (day.income == 0 && day.expense == 0) {
             return .clear
         }
-        return day.income > day.expense ? Color.green.opacity(0.12) : Color.red.opacity(0.12)
+        
+        if day.income > day.expense {
+            // Profitable day
+            let maxIncome = month.days.filter { !$0.isPadding }.map { $0.income }.max() ?? 1
+            let ratio = maxIncome > 0 ? Double(day.income) / Double(maxIncome) : 0.0
+            return Color.green.opacity(0.05 + ratio * 0.25)
+        } else {
+            // Expense day
+            let maxExpense = month.days.filter { !$0.isPadding }.map { $0.expense }.max() ?? 1
+            let ratio = maxExpense > 0 ? Double(day.expense) / Double(maxExpense) : 0.0
+            return Color.red.opacity(0.05 + ratio * 0.25)
+        }
     }
 
     private func accessibilityLabelForDay(_ day: CalendarDayData) -> String {

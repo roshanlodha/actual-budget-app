@@ -6,7 +6,7 @@ struct OnboardingView: View {
     
     // Step state: 0 = Name & Currency, 1 = Categories Setup
     @State private var currentStep: Int = 0
-    @State private var budgetName: String = ""
+    @State private var budgetName: String = "My Budget"
     @State private var selectedCurrency: String = "USD"
     @State private var errorMessage: String?
     @State private var showingActualImportSheet = false
@@ -114,18 +114,6 @@ struct OnboardingView: View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Budget Name")
-                            .font(AppTheme.Fonts.subheadline)
-                            .foregroundColor(.secondary)
-                        TextField("e.g. My Personal Finances", text: $budgetName)
-                            .foregroundColor(.primary)
-                            .textFieldStyle(.plain)
-                            .padding(12)
-                            .background(Color.primary.opacity(0.05))
-                            .cornerRadius(8)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 6) {
                         Text("Currency")
                             .font(AppTheme.Fonts.subheadline)
                             .foregroundColor(.secondary)
@@ -147,9 +135,7 @@ struct OnboardingView: View {
             Spacer()
             
             Button(action: {
-                if !budgetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    withAnimation { currentStep = 1 }
-                }
+                withAnimation { currentStep = 1 }
             }) {
                 HStack {
                     Text("Continue")
@@ -160,7 +146,6 @@ struct OnboardingView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(AppTheme.accent)
-            .disabled(budgetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             
             HStack {
                 Rectangle()

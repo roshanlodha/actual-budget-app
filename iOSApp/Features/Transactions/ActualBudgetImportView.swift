@@ -8,7 +8,7 @@ struct ActualBudgetImportView: View {
     @State private var step = 1
     @State private var csvText = ""
     @State private var importedFileName: String?
-    @State private var budgetName = "Actual Import"
+    @State private var budgetName = "My Budget"
     
     @State private var parsedCategories: [ParsedCategory] = []
     @State private var selectedCategoryKeys = Set<String>()
@@ -143,6 +143,8 @@ struct ActualBudgetImportView: View {
             Text(label)
                 .font(AppTheme.Fonts.caption)
                 .foregroundColor(step >= num ? .primary : .secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
     
@@ -256,24 +258,7 @@ struct ActualBudgetImportView: View {
                 .padding(.vertical, 12)
             }
             
-            if importedFileName != nil {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Budget Name")
-                        .font(AppTheme.Fonts.headline)
-                        .foregroundColor(.primary)
-                    
-                    TextField("Enter budget name", text: $budgetName)
-                        .foregroundColor(.primary)
-                        .textFieldStyle(.plain)
-                        .padding(12)
-                        .background(Color.white.opacity(0.05))
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                        )
-                }
-            }
+
         }
     }
     
@@ -380,17 +365,6 @@ struct ActualBudgetImportView: View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
-                        Text("Budget Name")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(budgetName)
-                            .foregroundColor(.primary)
-                            .bold()
-                    }
-                    
-                    Divider().background(Color.white.opacity(0.1))
-                    
-                    HStack {
                         Text("File")
                             .foregroundColor(.secondary)
                         Spacer()
@@ -428,20 +402,9 @@ struct ActualBudgetImportView: View {
                 if let text = String(data: data, encoding: .utf8) {
                     csvText = text
                     importedFileName = url.lastPathComponent
-                    
-                    // Auto detect budget name from file name
-                    let name = url.deletingPathExtension().lastPathComponent
-                    budgetName = name.replacingOccurrences(of: "-", with: " ")
-                                     .replacingOccurrences(of: "_", with: " ")
-                                     .capitalized
                 } else if let text = String(data: data, encoding: .ascii) {
                     csvText = text
                     importedFileName = url.lastPathComponent
-                    
-                    let name = url.deletingPathExtension().lastPathComponent
-                    budgetName = name.replacingOccurrences(of: "-", with: " ")
-                                     .replacingOccurrences(of: "_", with: " ")
-                                     .capitalized
                 } else {
                     errorMessage = "Failed to decode CSV text."
                 }
